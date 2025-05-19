@@ -15,7 +15,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-// 🔐 UUID 생성 및 localStorage 저장
+// UUID 생성 및 localStorage 저장
 const getOrCreateUserId = (): string => {
   const existing = localStorage.getItem("userUUID");
   if (existing) return existing;
@@ -75,12 +75,7 @@ export default function Scheduler() {
     const matched = reservations.find((r) => r.id === clickInfo.event.id);
     if (!matched) return;
 
-    // 🔐 예약자 UUID와 현재 접속자 UUID 비교
-    if (matched.userUUID !== userUUID) {
-      alert("본인의 예약만 수정할 수 있습니다.");
-      return;
-    }
-
+    // ✅ 누구나 수정 가능하도록 제한 없음
     setEditId(matched.id);
     setSelectedInstrument(matched.instrument);
     setSelectedDevice(matched.device);
@@ -160,7 +155,6 @@ export default function Scheduler() {
   const filteredReservations = selectedInstrument === "ALL"
     ? reservations
     : reservations.filter((r) => r.instrument === selectedInstrument);
-
   const today = new Date().toISOString().split("T")[0];
   const todayReservations = filteredReservations.filter((r) => r.date === today);
 
@@ -168,7 +162,6 @@ export default function Scheduler() {
     <div style={{ padding: 20 }}>
       <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>장비 예약 달력</h1>
 
-      {/* 장비 선택 */}
       <div style={{ marginBottom: 12 }}>
         {instruments.map((inst) => (
           <button
@@ -190,7 +183,6 @@ export default function Scheduler() {
         ))}
       </div>
 
-      {/* 장비 디바이스 선택 */}
       {selectedInstrument !== "ALL" && (
         <div style={{ marginBottom: 12 }}>
           {(selectedInstrument === "HPLC" ? hplcDevices :
@@ -213,7 +205,6 @@ export default function Scheduler() {
         </div>
       )}
 
-      {/* FullCalendar */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
@@ -245,7 +236,6 @@ export default function Scheduler() {
         slotEventOverlap={false}
       />
 
-      {/* 입력 폼 */}
       {selectedInstrument !== "ALL" && (
         <div style={{ marginTop: 20 }}>
           <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
@@ -280,7 +270,13 @@ export default function Scheduler() {
           {editId && (
             <button
               onClick={() => handleCancel(editId)}
-              style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
+              style={{
+                marginLeft: "8px",
+                padding: "6px 12px",
+                backgroundColor: "#dc3545",
+                color: "white",
+                borderRadius: "4px"
+              }}
             >
               삭제하기
             </button>
@@ -288,7 +284,6 @@ export default function Scheduler() {
         </div>
       )}
 
-      {/* 오늘의 예약 목록 */}
       {todayReservations.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <h3>오늘의 예약 😎</h3>
@@ -296,14 +291,12 @@ export default function Scheduler() {
             {todayReservations.map((r) => (
               <li key={r.id}>
                 {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
-                {r.userUUID === userUUID && (
-                  <button
-                    onClick={() => handleCancel(r.id)}
-                    style={{ marginLeft: "10px", padding: "2px 6px" }}
-                  >
-                    삭제
-                  </button>
-                )}
+                <button
+                  onClick={() => handleCancel(r.id)}
+                  style={{ marginLeft: "10px", padding: "2px 6px" }}
+                >
+                  삭제
+                </button>
               </li>
             ))}
           </ul>
