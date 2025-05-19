@@ -36,10 +36,14 @@ export default function Scheduler() {
   const [endTime, setEndTime] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
 
-  const instruments = ["ALL", "HPLC", "GC", "LCMS"];
-  const hplcDevices = ["1", "2", "3", "4", "5"];
-  const gcDevices = ["GC1", "GC2"];
-  const lcmsDevices = ["5500", "4500"];
+  const instruments = ["ALL", "HPLC", "GC", "GC-MS", "LC-MS", "IC", "ICP-MS", "ICP-OES"];
+  const hplcDevices = ["Agilent 1", "Agilent 2", "Agilent 3", "Shiseido 1", "Shiseido 2"];
+  const gcDevices = ["Agilent 1", "Agilent 2 - MSD", "Agilent 2 - 전자코"];
+  const gcmsDevices = ["Agilent 1", "Agilent 2 - MSD", "Agilent 2 - 전자코", "Thermo"];
+  const lcmsDevices = ["Sciex 1", "Sciex 2"];
+  const icDevices = ["Thermo"];
+  const icpmsDevices = ["Agilent"];
+  const icpoesDevices = ["Perkin"];
 
   const formatTime = (datetimeStr: string) => new Date(datetimeStr).toTimeString().slice(0, 5);
   const formatDate = (datetimeStr: string) => new Date(datetimeStr).toISOString().split("T")[0];
@@ -75,7 +79,11 @@ export default function Scheduler() {
     const matched = reservations.find((r) => r.id === clickInfo.event.id);
     if (!matched) return;
 
-    // ✅ 누구나 수정 가능하도록 제한 없음
+    if (matched.userUUID !== userUUID) {
+      alert("본인의 예약만 수정할 수 있습니다.");
+      return;
+    }
+
     setEditId(matched.id);
     setSelectedInstrument(matched.instrument);
     setSelectedDevice(matched.device);
@@ -121,6 +129,9 @@ export default function Scheduler() {
     };
 
     if (editId) {
+      const confirmEdit = window.confirm("예약을 수정하시겠습니까?");
+      if (!confirmEdit) return;
+
       await updateDoc(doc(db, "reservations", editId), payload);
       alert("예약이 수정되었습니다!");
     } else {
@@ -139,6 +150,9 @@ export default function Scheduler() {
   };
 
   const handleCancel = async (id: string) => {
+    const confirmDelete = window.confirm("예약을 삭제하시겠습니까?");
+    if (!confirmDelete) return;
+
     await deleteDoc(doc(db, "reservations", id));
     alert("예약이 삭제되었습니다.");
   };
@@ -147,8 +161,25 @@ export default function Scheduler() {
     switch (instrument) {
       case "HPLC": return { background: "#007bff", border: "#0056b3" };
       case "GC": return { background: "#28a745", border: "#1c7c31" };
-      case "LCMS": return { background: "#ffc107", border: "#d39e00" };
+      case "GC-MS": return { background: "#17a2b8", border: "#117a8b" };
+      case "LC-MS": return { background: "#ffc107", border: "#d39e00" };
+      case "IC": return { background: "#6610f2", border: "#520dc2" };
+      case "ICP-MS": return { background: "#fd7e14", border: "#e8590c" };
+      case "ICP-OES": return { background: "#6f42c1", border: "#5936a2" };
       default: return { background: "#6c757d", border: "#5a6268" };
+    }
+  };
+
+  const getDevicesForInstrument = (inst: string) => {
+    switch (inst) {
+      case "HPLC": return hplcDevices;
+      case "GC": return gcDevices;
+      case "GC-MS": return gcmsDevices;
+      case "LC-MS": return lcmsDevices;
+      case "IC": return icDevices;
+      case "ICP-MS": return icpmsDevices;
+      case "ICP-OES": return icpoesDevices;
+      default: return [];
     }
   };
 
@@ -185,9 +216,7 @@ export default function Scheduler() {
 
       {selectedInstrument !== "ALL" && (
         <div style={{ marginBottom: 12 }}>
-          {(selectedInstrument === "HPLC" ? hplcDevices :
-            selectedInstrument === "GC" ? gcDevices :
-              selectedInstrument === "LCMS" ? lcmsDevices : []).map((id) => (
+          {getDevicesForInstrument(selectedInstrument).map((id) => (
             <button
               key={id}
               onClick={() => setSelectedDevice(id)}
@@ -199,7 +228,7 @@ export default function Scheduler() {
                 borderRadius: 4,
               }}
             >
-              {selectedInstrument} {id}
+              {id}
             </button>
           ))}
         </div>
@@ -270,13 +299,7 @@ export default function Scheduler() {
           {editId && (
             <button
               onClick={() => handleCancel(editId)}
-              style={{
-                marginLeft: "8px",
-                padding: "6px 12px",
-                backgroundColor: "#dc3545",
-                color: "white",
-                borderRadius: "4px"
-              }}
+              style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
             >
               삭제하기
             </button>
@@ -291,12 +314,14 @@ export default function Scheduler() {
             {todayReservations.map((r) => (
               <li key={r.id}>
                 {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
-                <button
-                  onClick={() => handleCancel(r.id)}
-                  style={{ marginLeft: "10px", padding: "2px 6px" }}
-                >
-                  삭제
-                </button>
+                {r.userUUID === userUUID && (
+                  <button
+                    onClick={() => handleCancel(r.id)}
+                    style={{ marginLeft: "10px", padding: "2px 6px" }}
+                  >
+                    삭제
+                  </button>
+                )}
               </li>
             ))}
           </ul>
