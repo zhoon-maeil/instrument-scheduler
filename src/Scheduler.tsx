@@ -12,7 +12,6 @@ import {
   deleteDoc,
   updateDoc,
   doc,
-  Timestamp,
 } from "firebase/firestore";
 
 export default function Scheduler() {
@@ -68,6 +67,23 @@ export default function Scheduler() {
     setSelectedDate(info.startStr.split("T")[0]);
     setStartTime(formatTime(info.startStr));
     setEndTime(formatTime(info.endStr));
+  };
+
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const found = reservations.find(
+      (r) => r.start === clickInfo.event.startStr && r.end === clickInfo.event.endStr
+    );
+    if (found) {
+      setUsername(found.user);
+      setPurpose(found.purpose);
+      setSelectedInstrument(found.instrument);
+      setSelectedDevice(found.device);
+      setSelectInfo({ startStr: found.start, endStr: found.end });
+      setEditId(found.id);
+      setSelectedDate(found.date);
+      setStartTime(formatTime(found.start));
+      setEndTime(formatTime(found.end));
+    }
   };
 
   const combineDateTime = (date: string, time: string) => {
