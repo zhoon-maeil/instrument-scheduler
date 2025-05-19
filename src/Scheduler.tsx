@@ -15,7 +15,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-// ✅ UUID 저장 및 재사용
+// 🔐 UUID 생성 및 localStorage 저장
 const getOrCreateUserId = (): string => {
   const existing = localStorage.getItem("userUUID");
   if (existing) return existing;
@@ -41,15 +41,9 @@ export default function Scheduler() {
   const gcDevices = ["GC1", "GC2"];
   const lcmsDevices = ["5500", "4500"];
 
-  const formatTime = (datetimeStr: string) => {
-    const date = new Date(datetimeStr);
-    return date.toTimeString().slice(0, 5);
-  };
-
-  const formatDate = (datetimeStr: string) => {
-    const date = new Date(datetimeStr);
-    return date.toISOString().split("T")[0];
-  };
+  const formatTime = (datetimeStr: string) => new Date(datetimeStr).toTimeString().slice(0, 5);
+  const formatDate = (datetimeStr: string) => new Date(datetimeStr).toISOString().split("T")[0];
+  const combineDateTime = (date: string, time: string) => `${date}T${time}:00`;
 
   const generateTimeOptions = () => {
     const times = [];
@@ -74,18 +68,18 @@ export default function Scheduler() {
     setSelectedDate(info.startStr.split("T")[0]);
     setStartTime(formatTime(info.startStr));
     setEndTime(formatTime(info.endStr));
-    setEditId(null); // 새 예약 시 기존 수정 ID 초기화
+    setEditId(null);
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
-    const event = clickInfo.event;
-    const matched = reservations.find(
-      (r) =>
-        r.start === event.startStr &&
-        r.end === event.endStr &&
-        r.title === event.title
-    );
+    const matched = reservations.find((r) => r.id === clickInfo.event.id);
     if (!matched) return;
+
+    // 🔐 예약자 UUID와 현재 접속자 UUID 비교
+    if (matched.userUUID !== userUUID) {
+      alert("본인의 예약만 수정할 수 있습니다.");
+      return;
+    }
 
     setEditId(matched.id);
     setSelectedInstrument(matched.instrument);
@@ -97,20 +91,8 @@ export default function Scheduler() {
     setEndTime(formatTime(matched.end));
   };
 
-  const combineDateTime = (date: string, time: string) => {
-    return `${date}T${time}:00`;
-  };
-
   const handleReservation = async () => {
-    if (
-      !username ||
-      !purpose ||
-      selectedInstrument === "ALL" ||
-      !selectedDevice ||
-      !startTime ||
-      !endTime ||
-      !selectedDate
-    )
+    if (!username || !purpose || selectedInstrument === "ALL" || !selectedDevice || !startTime || !endTime || !selectedDate)
       return;
 
     const start = combineDateTime(selectedDate, startTime);
@@ -123,7 +105,7 @@ export default function Scheduler() {
         r.date === date &&
         r.instrument === selectedInstrument &&
         r.device === selectedDevice &&
-        isTimeOverlap(start, end, r.start, r.end)
+        start < r.end && end > r.start
     );
     if (isDuplicate) {
       alert("해당 기기의 예약 시간이 겹칩니다!");
@@ -151,7 +133,6 @@ export default function Scheduler() {
       alert("예약이 완료되었습니다!");
     }
 
-    // 초기화
     setUsername("");
     setPurpose("");
     setSelectedInstrument("ALL");
@@ -167,9 +148,6 @@ export default function Scheduler() {
     alert("예약이 삭제되었습니다.");
   };
 
-  const isTimeOverlap = (startA: string, endA: string, startB: string, endB: string) =>
-    startA < endB && endA > startB;
-
   const getColorByInstrument = (instrument: string) => {
     switch (instrument) {
       case "HPLC": return { background: "#007bff", border: "#0056b3" };
@@ -179,10 +157,9 @@ export default function Scheduler() {
     }
   };
 
-  const filteredReservations =
-    selectedInstrument === "ALL"
-      ? reservations
-      : reservations.filter((r) => r.instrument === selectedInstrument);
+  const filteredReservations = selectedInstrument === "ALL"
+    ? reservations
+    : reservations.filter((r) => r.instrument === selectedInstrument);
 
   const today = new Date().toISOString().split("T")[0];
   const todayReservations = filteredReservations.filter((r) => r.date === today);
@@ -191,6 +168,7 @@ export default function Scheduler() {
     <div style={{ padding: 20 }}>
       <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>장비 예약 달력</h1>
 
+      {/* 장비 선택 */}
       <div style={{ marginBottom: 12 }}>
         {instruments.map((inst) => (
           <button
@@ -212,6 +190,7 @@ export default function Scheduler() {
         ))}
       </div>
 
+      {/* 장비 디바이스 선택 */}
       {selectedInstrument !== "ALL" && (
         <div style={{ marginBottom: 12 }}>
           {(selectedInstrument === "HPLC" ? hplcDevices :
@@ -234,6 +213,7 @@ export default function Scheduler() {
         </div>
       )}
 
+      {/* FullCalendar */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
@@ -265,11 +245,10 @@ export default function Scheduler() {
         slotEventOverlap={false}
       />
 
+      {/* 입력 폼 */}
       {selectedInstrument !== "ALL" && (
         <div style={{ marginTop: 20 }}>
-          <h3>
-            선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}
-          </h3>
+          <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
           <input
             type="text"
             placeholder="이름"
@@ -309,6 +288,7 @@ export default function Scheduler() {
         </div>
       )}
 
+      {/* 오늘의 예약 목록 */}
       {todayReservations.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <h3>오늘의 예약 😎</h3>
