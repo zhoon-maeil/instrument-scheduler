@@ -4,15 +4,26 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { DateSelectArg, EventClickArg } from "@fullcalendar/core";
+import { v4 as uuidv4 } from "uuid";
 import { db } from "./firebase";
 import {
   collection,
-  addDoc,
   onSnapshot,
   deleteDoc,
   updateDoc,
   doc,
+  setDoc,
 } from "firebase/firestore";
+
+// ✅ UUID 저장 및 재사용
+const getOrCreateUserId = (): string => {
+  const existing = localStorage.getItem("userUUID");
+  if (existing) return existing;
+  const newId = uuidv4();
+  localStorage.setItem("userUUID", newId);
+  return newId;
+};
+const userUUID = getOrCreateUserId();
 
 export default function Scheduler() {
   const [username, setUsername] = useState("");
@@ -20,7 +31,6 @@ export default function Scheduler() {
   const [selectedInstrument, setSelectedInstrument] = useState<string>("ALL");
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
-  const [selectInfo, setSelectInfo] = useState<any>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -50,7 +60,6 @@ export default function Scheduler() {
     times.push("18:00");
     return times;
   };
-
   const timeOptions = generateTimeOptions();
 
   useEffect(() => {
@@ -62,11 +71,10 @@ export default function Scheduler() {
   }, []);
 
   const handleSelect = (info: DateSelectArg) => {
-    setSelectInfo(info);
-    setEditId(null);
     setSelectedDate(info.startStr.split("T")[0]);
     setStartTime(formatTime(info.startStr));
     setEndTime(formatTime(info.endStr));
+    setEditId(null); // 새 예약 시 기존 수정 ID 초기화
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -79,7 +87,6 @@ export default function Scheduler() {
     );
     if (!matched) return;
 
-    setSelectInfo(clickInfo);
     setEditId(matched.id);
     setSelectedInstrument(matched.instrument);
     setSelectedDevice(matched.device);
@@ -99,7 +106,7 @@ export default function Scheduler() {
       !username ||
       !purpose ||
       selectedInstrument === "ALL" ||
-      selectedDevice === null ||
+      !selectedDevice ||
       !startTime ||
       !endTime ||
       !selectedDate
@@ -118,13 +125,13 @@ export default function Scheduler() {
         r.device === selectedDevice &&
         isTimeOverlap(start, end, r.start, r.end)
     );
-
     if (isDuplicate) {
       alert("해당 기기의 예약 시간이 겹칩니다!");
       return;
     }
 
     const payload = {
+      id: editId ?? uuidv4(),
       title: `${selectedInstrument} ${selectedDevice} - ${username}`,
       date,
       start,
@@ -133,17 +140,18 @@ export default function Scheduler() {
       device: selectedDevice,
       user: username,
       purpose,
+      userUUID,
     };
 
     if (editId) {
       await updateDoc(doc(db, "reservations", editId), payload);
       alert("예약이 수정되었습니다!");
     } else {
-      await addDoc(collection(db, "reservations"), payload);
+      await setDoc(doc(db, "reservations", payload.id), payload);
       alert("예약이 완료되었습니다!");
     }
 
-    setSelectInfo(null);
+    // 초기화
     setUsername("");
     setPurpose("");
     setSelectedInstrument("ALL");
@@ -159,25 +167,15 @@ export default function Scheduler() {
     alert("예약이 삭제되었습니다.");
   };
 
-  const isTimeOverlap = (
-    startA: string,
-    endA: string,
-    startB: string,
-    endB: string
-  ) => {
-    return startA < endB && endA > startB;
-  };
+  const isTimeOverlap = (startA: string, endA: string, startB: string, endB: string) =>
+    startA < endB && endA > startB;
 
   const getColorByInstrument = (instrument: string) => {
     switch (instrument) {
-      case "HPLC":
-        return { background: "#007bff", border: "#0056b3" };
-      case "GC":
-        return { background: "#28a745", border: "#1c7c31" };
-      case "LCMS":
-        return { background: "#ffc107", border: "#d39e00" };
-      default:
-        return { background: "#6c757d", border: "#5a6268" };
+      case "HPLC": return { background: "#007bff", border: "#0056b3" };
+      case "GC": return { background: "#28a745", border: "#1c7c31" };
+      case "LCMS": return { background: "#ffc107", border: "#d39e00" };
+      default: return { background: "#6c757d", border: "#5a6268" };
     }
   };
 
@@ -187,15 +185,11 @@ export default function Scheduler() {
       : reservations.filter((r) => r.instrument === selectedInstrument);
 
   const today = new Date().toISOString().split("T")[0];
-  const todayReservations = filteredReservations.filter(
-    (r) => r.date === today
-  );
+  const todayReservations = filteredReservations.filter((r) => r.date === today);
 
   return (
     <div style={{ padding: 20 }}>
-      <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>
-        장비 예약 달력
-      </h1>
+      <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>장비 예약 달력</h1>
 
       <div style={{ marginBottom: 12 }}>
         {instruments.map((inst) => (
@@ -218,61 +212,23 @@ export default function Scheduler() {
         ))}
       </div>
 
-      {selectedInstrument === "HPLC" && (
+      {selectedInstrument !== "ALL" && (
         <div style={{ marginBottom: 12 }}>
-          {hplcDevices.map((num) => (
-            <button
-              key={num}
-              onClick={() => setSelectedDevice(num)}
-              style={{
-                marginRight: 8,
-                padding: "6px 12px",
-                backgroundColor: selectedDevice === num ? "#007bff" : "#eee",
-                color: selectedDevice === num ? "white" : "black",
-                borderRadius: 4,
-              }}
-            >
-              HPLC {num}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {selectedInstrument === "GC" && (
-        <div style={{ marginBottom: 12 }}>
-          {gcDevices.map((id) => (
+          {(selectedInstrument === "HPLC" ? hplcDevices :
+            selectedInstrument === "GC" ? gcDevices :
+              selectedInstrument === "LCMS" ? lcmsDevices : []).map((id) => (
             <button
               key={id}
               onClick={() => setSelectedDevice(id)}
               style={{
                 marginRight: 8,
                 padding: "6px 12px",
-                backgroundColor: selectedDevice === id ? "#28a745" : "#eee",
+                backgroundColor: selectedDevice === id ? "#aaa" : "#eee",
                 color: selectedDevice === id ? "white" : "black",
                 borderRadius: 4,
               }}
             >
-              {id}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {selectedInstrument === "LCMS" && (
-        <div style={{ marginBottom: 12 }}>
-          {lcmsDevices.map((id) => (
-            <button
-              key={id}
-              onClick={() => setSelectedDevice(id)}
-              style={{
-                marginRight: 8,
-                padding: "6px 12px",
-                backgroundColor: selectedDevice === id ? "#ffc107" : "#eee",
-                color: "black",
-                borderRadius: 4,
-              }}
-            >
-              LC-MS {id}
+              {selectedInstrument} {id}
             </button>
           ))}
         </div>
@@ -288,6 +244,7 @@ export default function Scheduler() {
         events={filteredReservations.map((r) => {
           const colors = getColorByInstrument(r.instrument);
           return {
+            id: r.id,
             title: r.title,
             start: r.start,
             end: r.end,
@@ -327,51 +284,24 @@ export default function Scheduler() {
             onChange={(e) => setPurpose(e.target.value)}
             style={{ padding: "6px", marginRight: "8px" }}
           />
-          <select
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-          >
+          <select value={startTime} onChange={(e) => setStartTime(e.target.value)}>
             <option value="">시작 시간 선택</option>
-            {timeOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
+            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <select
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            style={{ marginLeft: "8px" }}
-          >
+          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ marginLeft: "8px" }}>
             <option value="">종료 시간 선택</option>
-            {timeOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
+            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <button
             onClick={handleReservation}
-            style={{
-              padding: "6px 12px",
-              backgroundColor: "#007bff",
-              color: "white",
-              borderRadius: "4px",
-              marginLeft: "8px",
-            }}
+            style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px", marginLeft: "8px" }}
           >
-            {editId !== null ? "수정하기" : "예약하기"}
+            {editId ? "수정하기" : "예약하기"}
           </button>
           {editId && (
             <button
               onClick={() => handleCancel(editId)}
-              style={{
-                marginLeft: "8px",
-                padding: "6px 12px",
-                backgroundColor: "#dc3545",
-                color: "white",
-                borderRadius: "4px",
-              }}
+              style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
             >
               삭제하기
             </button>
@@ -385,9 +315,8 @@ export default function Scheduler() {
           <ul>
             {todayReservations.map((r) => (
               <li key={r.id}>
-                {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~{" "}
-                {formatTime(r.end)} - {r.user} ({r.purpose})
-                {r.user === username && (
+                {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
+                {r.userUUID === userUUID && (
                   <button
                     onClick={() => handleCancel(r.id)}
                     style={{ marginLeft: "10px", padding: "2px 6px" }}
