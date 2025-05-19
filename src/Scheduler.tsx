@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin, { DateSelectArg } from "@fullcalendar/interaction";
-import { EventClickArg } from "@fullcalendar/core";
+import interactionPlugin from "@fullcalendar/interaction";
+import { DateSelectArg, EventClickArg } from "@fullcalendar/core";
 import { db } from "./firebase";
 import {
   collection,
