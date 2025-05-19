@@ -35,6 +35,7 @@ export default function Scheduler() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectInfo, setSelectInfo] = useState<DateSelectArg | null>(null);
 
   const instruments = ["ALL", "HPLC", "GC", "GC-MS", "LC-MS", "IC", "ICP-MS", "ICP-OES"];
   const hplcDevices = ["Agilent 1", "Agilent 2", "Agilent 3", "Shiseido 1", "Shiseido 2"];
@@ -77,6 +78,7 @@ export default function Scheduler() {
     setStartTime(formatTime(info.startStr));
     setEndTime(formatTime(info.endStr));
     setEditId(null);
+    setSelectInfo(info);
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -153,6 +155,7 @@ export default function Scheduler() {
     setStartTime("");
     setEndTime("");
     setSelectedDate("");
+    setSelectInfo(null);
   };
 
   const handleCancel = async (id: string) => {
@@ -186,6 +189,9 @@ export default function Scheduler() {
       default: return [];
     }
   };
+
+  const today = new Date().toISOString().split("T")[0];
+  const todayReservations = reservations.filter((r) => r.date === today);
 
   return (
     <div style={{ padding: 20 }}>
@@ -300,6 +306,69 @@ export default function Scheduler() {
         slotDuration="00:30:00"
         slotEventOverlap={false}
       />
+
+      {(selectedInstrument !== "ALL" || selectInfo !== null) && (
+        <div style={{ marginTop: 20 }}>
+          <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
+          <input
+            type="text"
+            placeholder="이름"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={{ padding: "6px", marginRight: "8px" }}
+          />
+          <input
+            type="text"
+            placeholder="사용 목적"
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            style={{ padding: "6px", marginRight: "8px" }}
+          />
+          <select value={startTime} onChange={(e) => setStartTime(e.target.value)}>
+            <option value="">시작 시간 선택</option>
+            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ marginLeft: "8px" }}>
+            <option value="">종료 시간 선택</option>
+            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <button
+            onClick={handleReservation}
+            style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px", marginLeft: "8px" }}
+          >
+            {editId ? "수정하기" : "예약하기"}
+          </button>
+          {editId && (
+            <button
+              onClick={() => handleCancel(editId)}
+              style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
+            >
+              삭제하기
+            </button>
+          )}
+        </div>
+      )}
+
+      {(selectedInstrument !== "ALL" || selectInfo !== null) && todayReservations.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <h3>오늘의 예약 😎</h3>
+          <ul>
+            {todayReservations.map((r) => (
+              <li key={r.id}>
+                {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
+                {r.userUUID === userUUID && (
+                  <button
+                    onClick={() => handleCancel(r.id)}
+                    style={{ marginLeft: "10px", padding: "2px 6px" }}
+                  >
+                    삭제
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
