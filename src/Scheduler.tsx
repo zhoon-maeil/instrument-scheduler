@@ -109,13 +109,14 @@ export default function Scheduler() {
     const start = combineDateTime(selectedDate, startTime);
     const end = combineDateTime(selectedDate, endTime);
     const date = selectedDate;
+    const fullDevice = selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice;
 
     const isDuplicate = reservations.some(
       (r) =>
         r.id !== editId &&
         r.date === date &&
         r.instrument === selectedInstrument &&
-        r.device === (selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice) &&
+        r.device === fullDevice &&
         start < r.end && end > r.start
     );
     if (isDuplicate) {
@@ -125,12 +126,12 @@ export default function Scheduler() {
 
     const payload = {
       id: editId ?? uuidv4(),
-      title: `${selectedInstrument} ${selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice} - ${username}`,
+      title: `${selectedInstrument} ${fullDevice} - ${username}`,
       date,
       start,
       end,
       instrument: selectedInstrument,
-      device: selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice,
+      device: fullDevice,
       user: username,
       purpose,
       userUUID,
@@ -191,7 +192,10 @@ export default function Scheduler() {
   };
 
   const today = new Date().toISOString().split("T")[0];
-  const todayReservations = reservations.filter((r) => r.date === today);
+  const filteredReservations = selectedInstrument === "ALL"
+    ? reservations
+    : reservations.filter((r) => r.instrument === selectedInstrument);
+  const todayReservations = filteredReservations.filter((r) => r.date === today);
 
   return (
     <div style={{ padding: 20 }}>
@@ -285,7 +289,7 @@ export default function Scheduler() {
         select={handleSelect}
         eventClick={handleEventClick}
         allDaySlot={false}
-        events={reservations.map((r) => {
+        events={filteredReservations.map((r) => {
           const colors = getColorByInstrument(r.instrument);
           return {
             id: r.id,
@@ -298,7 +302,9 @@ export default function Scheduler() {
           };
         })}
         eventContent={(arg) => (
-          <div style={{ fontSize: "10px", padding: "0 2px" }}>{arg.event.title}</div>
+          <div style={{ fontSize: "10px", padding: "0 2px" }}>
+            {arg.event.title}
+          </div>
         )}
         height="auto"
         slotMinTime="08:00:00"
