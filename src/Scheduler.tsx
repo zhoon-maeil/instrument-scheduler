@@ -23,6 +23,9 @@ export default function Scheduler() {
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectInfo, setSelectInfo] = useState<any>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [selectedDate, setSelectedDate] = useState<string>("");
 
   const instruments = ["ALL", "HPLC", "GC", "LCMS"];
   const hplcDevices = ["1", "2", "3", "4", "5"];
@@ -39,6 +42,18 @@ export default function Scheduler() {
     return date.toISOString().split("T")[0];
   };
 
+  const generateTimeOptions = () => {
+    const times = [];
+    for (let h = 8; h < 18; h++) {
+      times.push(`${h.toString().padStart(2, "0")}:00`);
+      times.push(`${h.toString().padStart(2, "0")}:30`);
+    }
+    times.push("18:00");
+    return times;
+  };
+
+  const timeOptions = generateTimeOptions();
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "reservations"), (snapshot) => {
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -50,32 +65,21 @@ export default function Scheduler() {
   const handleSelect = (info: any) => {
     setSelectInfo(info);
     setEditId(null);
+    setSelectedDate(info.startStr.split("T")[0]);
+    setStartTime(formatTime(info.startStr));
+    setEndTime(formatTime(info.endStr));
   };
 
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    const found = reservations.find(
-      (r) => r.start === clickInfo.event.startStr && r.end === clickInfo.event.endStr
-    );
-    if (found) {
-      setUsername(found.user);
-      setPurpose(found.purpose);
-      setSelectedInstrument(found.instrument);
-      setSelectedDevice(found.device);
-      setSelectInfo({ startStr: found.start, endStr: found.end });
-      setEditId(found.id);
-    }
-  };
-
-  const isTimeOverlap = (startA: string, endA: string, startB: string, endB: string) => {
-    return startA < endB && endA > startB;
+  const combineDateTime = (date: string, time: string) => {
+    return `${date}T${time}:00`;
   };
 
   const handleReservation = async () => {
-    if (!selectInfo || !username || !purpose || selectedInstrument === "ALL" || selectedDevice === null) return;
+    if (!username || !purpose || selectedInstrument === "ALL" || selectedDevice === null || !startTime || !endTime || !selectedDate) return;
 
-    const start = selectInfo.startStr;
-    const end = selectInfo.endStr;
-    const date = start.split("T")[0];
+    const start = combineDateTime(selectedDate, startTime);
+    const end = combineDateTime(selectedDate, endTime);
+    const date = selectedDate;
 
     const isDuplicate = reservations.some(
       (r) =>
@@ -116,11 +120,18 @@ export default function Scheduler() {
     setSelectedInstrument("ALL");
     setSelectedDevice(null);
     setEditId(null);
+    setStartTime("");
+    setEndTime("");
+    setSelectedDate("");
   };
 
   const handleCancel = async (id: string) => {
     await deleteDoc(doc(db, "reservations", id));
     alert("예약이 삭제되었습니다.");
+  };
+
+  const isTimeOverlap = (startA: string, endA: string, startB: string, endB: string) => {
+    return startA < endB && endA > startB;
   };
 
   const getColorByInstrument = (instrument: string) => {
@@ -230,6 +241,7 @@ export default function Scheduler() {
         selectable={true}
         select={handleSelect}
         eventClick={handleEventClick}
+        allDaySlot={false}
         events={filteredReservations.map((r) => {
           const colors = getColorByInstrument(r.instrument);
           return {
@@ -251,9 +263,9 @@ export default function Scheduler() {
         slotEventOverlap={false}
       />
 
-      {selectInfo && selectedInstrument !== "ALL" && (
+      {selectedInstrument !== "ALL" && (
         <div style={{ marginTop: 20 }}>
-          <h3>선택한 시간: {formatDate(selectInfo.startStr)} {formatTime(selectInfo.startStr)} ~ {formatTime(selectInfo.endStr)}</h3>
+          <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
           <input
             type="text"
             placeholder="이름"
@@ -268,9 +280,21 @@ export default function Scheduler() {
             onChange={(e) => setPurpose(e.target.value)}
             style={{ padding: "6px", marginRight: "8px" }}
           />
+          <select value={startTime} onChange={(e) => setStartTime(e.target.value)}>
+            <option value="">시작 시간 선택</option>
+            {timeOptions.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ marginLeft: "8px" }}>
+            <option value="">종료 시간 선택</option>
+            {timeOptions.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
           <button
             onClick={handleReservation}
-            style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px" }}
+            style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px", marginLeft: "8px" }}
           >
             {editId !== null ? "수정하기" : "예약하기"}
           </button>
@@ -292,12 +316,14 @@ export default function Scheduler() {
             {todayReservations.map((r) => (
               <li key={r.id}>
                 {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
-                <button
-                  onClick={() => handleCancel(r.id)}
-                  style={{ marginLeft: "10px", padding: "2px 6px" }}
-                >
-                  삭제
-                </button>
+                {r.user === username && (
+                  <button
+                    onClick={() => handleCancel(r.id)}
+                    style={{ marginLeft: "10px", padding: "2px 6px" }}
+                  >
+                    삭제
+                  </button>
+                )}
               </li>
             ))}
           </ul>
