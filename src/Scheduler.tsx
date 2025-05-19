@@ -15,7 +15,6 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-// UUID 생성 및 localStorage 저장
 const getOrCreateUserId = (): string => {
   const existing = localStorage.getItem("userUUID");
   if (existing) return existing;
@@ -30,6 +29,7 @@ export default function Scheduler() {
   const [purpose, setPurpose] = useState("");
   const [selectedInstrument, setSelectedInstrument] = useState<string>("ALL");
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [selectedSubDevice, setSelectedSubDevice] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState("");
@@ -39,7 +39,11 @@ export default function Scheduler() {
   const instruments = ["ALL", "HPLC", "GC", "GC-MS", "LC-MS", "IC", "ICP-MS", "ICP-OES"];
   const hplcDevices = ["Agilent 1", "Agilent 2", "Agilent 3", "Shiseido 1", "Shiseido 2"];
   const gcDevices = ["Agilent 1", "Agilent 2 - MSD", "Agilent 2 - 전자코"];
-  const gcmsDevices = ["Agilent 1", "Agilent 2 - MSD", "Agilent 2 - 전자코", "Thermo"];
+  const gcmsDevices: Record<string, string[]> = {
+    "Agilent 1": [],
+    "Agilent 2": ["MSD", "전자코"],
+    "Thermo": []
+  };
   const lcmsDevices = ["Sciex 1", "Sciex 2"];
   const icDevices = ["Thermo"];
   const icpmsDevices = ["Agilent"];
@@ -86,7 +90,9 @@ export default function Scheduler() {
 
     setEditId(matched.id);
     setSelectedInstrument(matched.instrument);
-    setSelectedDevice(matched.device);
+    const [main, sub] = matched.device.split(" - ");
+    setSelectedDevice(main);
+    setSelectedSubDevice(sub || null);
     setUsername(matched.user);
     setPurpose(matched.purpose);
     setSelectedDate(formatDate(matched.start));
@@ -107,7 +113,7 @@ export default function Scheduler() {
         r.id !== editId &&
         r.date === date &&
         r.instrument === selectedInstrument &&
-        r.device === selectedDevice &&
+        r.device === (selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice) &&
         start < r.end && end > r.start
     );
     if (isDuplicate) {
@@ -117,12 +123,12 @@ export default function Scheduler() {
 
     const payload = {
       id: editId ?? uuidv4(),
-      title: `${selectedInstrument} ${selectedDevice} - ${username}`,
+      title: `${selectedInstrument} ${selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice} - ${username}`,
       date,
       start,
       end,
       instrument: selectedInstrument,
-      device: selectedDevice,
+      device: selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice,
       user: username,
       purpose,
       userUUID,
@@ -131,7 +137,6 @@ export default function Scheduler() {
     if (editId) {
       const confirmEdit = window.confirm("예약을 수정하시겠습니까?");
       if (!confirmEdit) return;
-
       await updateDoc(doc(db, "reservations", editId), payload);
       alert("예약이 수정되었습니다!");
     } else {
@@ -143,6 +148,7 @@ export default function Scheduler() {
     setPurpose("");
     setSelectedInstrument("ALL");
     setSelectedDevice(null);
+    setSelectedSubDevice(null);
     setEditId(null);
     setStartTime("");
     setEndTime("");
@@ -152,7 +158,6 @@ export default function Scheduler() {
   const handleCancel = async (id: string) => {
     const confirmDelete = window.confirm("예약을 삭제하시겠습니까?");
     if (!confirmDelete) return;
-
     await deleteDoc(doc(db, "reservations", id));
     alert("예약이 삭제되었습니다.");
   };
@@ -170,11 +175,10 @@ export default function Scheduler() {
     }
   };
 
-  const getDevicesForInstrument = (inst: string) => {
-    switch (inst) {
+  const getDevices = (instrument: string): string[] => {
+    switch (instrument) {
       case "HPLC": return hplcDevices;
       case "GC": return gcDevices;
-      case "GC-MS": return gcmsDevices;
       case "LC-MS": return lcmsDevices;
       case "IC": return icDevices;
       case "ICP-MS": return icpmsDevices;
@@ -182,12 +186,6 @@ export default function Scheduler() {
       default: return [];
     }
   };
-
-  const filteredReservations = selectedInstrument === "ALL"
-    ? reservations
-    : reservations.filter((r) => r.instrument === selectedInstrument);
-  const today = new Date().toISOString().split("T")[0];
-  const todayReservations = filteredReservations.filter((r) => r.date === today);
 
   return (
     <div style={{ padding: 20 }}>
@@ -200,6 +198,7 @@ export default function Scheduler() {
             onClick={() => {
               setSelectedInstrument(inst);
               setSelectedDevice(null);
+              setSelectedSubDevice(null);
             }}
             style={{
               marginRight: 8,
@@ -214,9 +213,48 @@ export default function Scheduler() {
         ))}
       </div>
 
-      {selectedInstrument !== "ALL" && (
+      {selectedInstrument === "GC-MS" && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            {Object.keys(gcmsDevices).map((device) => (
+              <button
+                key={device}
+                onClick={() => {
+                  setSelectedDevice(device);
+                  setSelectedSubDevice(null);
+                }}
+                style={{
+                  marginRight: 8,
+                  padding: "6px 12px",
+                  backgroundColor: selectedDevice === device ? "#aaa" : "#eee",
+                  color: selectedDevice === device ? "white" : "black",
+                  borderRadius: 4,
+                }}
+              >
+                {device}
+              </button>
+            ))}
+          </div>
+          {selectedDevice && gcmsDevices[selectedDevice]?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <select
+                value={selectedSubDevice || ""}
+                onChange={(e) => setSelectedSubDevice(e.target.value)}
+                style={{ padding: "6px" }}
+              >
+                <option value="">서브 디바이스 선택</option>
+                {gcmsDevices[selectedDevice].map((sub) => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </>
+      )}
+
+      {selectedInstrument !== "ALL" && selectedInstrument !== "GC-MS" && (
         <div style={{ marginBottom: 12 }}>
-          {getDevicesForInstrument(selectedInstrument).map((id) => (
+          {getDevices(selectedInstrument).map((id) => (
             <button
               key={id}
               onClick={() => setSelectedDevice(id)}
@@ -241,7 +279,7 @@ export default function Scheduler() {
         select={handleSelect}
         eventClick={handleEventClick}
         allDaySlot={false}
-        events={filteredReservations.map((r) => {
+        events={reservations.map((r) => {
           const colors = getColorByInstrument(r.instrument);
           return {
             id: r.id,
@@ -254,9 +292,7 @@ export default function Scheduler() {
           };
         })}
         eventContent={(arg) => (
-          <div style={{ fontSize: "10px", padding: "0 2px" }}>
-            {arg.event.title}
-          </div>
+          <div style={{ fontSize: "10px", padding: "0 2px" }}>{arg.event.title}</div>
         )}
         height="auto"
         slotMinTime="08:00:00"
@@ -264,69 +300,6 @@ export default function Scheduler() {
         slotDuration="00:30:00"
         slotEventOverlap={false}
       />
-
-      {selectedInstrument !== "ALL" && (
-        <div style={{ marginTop: 20 }}>
-          <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
-          <input
-            type="text"
-            placeholder="이름"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            style={{ padding: "6px", marginRight: "8px" }}
-          />
-          <input
-            type="text"
-            placeholder="사용 목적"
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-            style={{ padding: "6px", marginRight: "8px" }}
-          />
-          <select value={startTime} onChange={(e) => setStartTime(e.target.value)}>
-            <option value="">시작 시간 선택</option>
-            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ marginLeft: "8px" }}>
-            <option value="">종료 시간 선택</option>
-            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <button
-            onClick={handleReservation}
-            style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px", marginLeft: "8px" }}
-          >
-            {editId ? "수정하기" : "예약하기"}
-          </button>
-          {editId && (
-            <button
-              onClick={() => handleCancel(editId)}
-              style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
-            >
-              삭제하기
-            </button>
-          )}
-        </div>
-      )}
-
-      {todayReservations.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <h3>오늘의 예약 😎</h3>
-          <ul>
-            {todayReservations.map((r) => (
-              <li key={r.id}>
-                {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
-                {r.userUUID === userUUID && (
-                  <button
-                    onClick={() => handleCancel(r.id)}
-                    style={{ marginLeft: "10px", padding: "2px 6px" }}
-                  >
-                    삭제
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
