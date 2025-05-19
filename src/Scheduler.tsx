@@ -1,9 +1,19 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { EventClickArg } from "@fullcalendar/core";
+import { db } from "./firebase";
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  deleteDoc,
+  updateDoc,
+  doc,
+  Timestamp,
+} from "firebase/firestore";
 
 export default function Scheduler() {
   const [username, setUsername] = useState("");
@@ -12,39 +22,47 @@ export default function Scheduler() {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
   const [selectInfo, setSelectInfo] = useState<any>(null);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
 
   const instruments = ["ALL", "HPLC", "GC", "LCMS"];
   const hplcDevices = ["1", "2", "3", "4", "5"];
   const gcDevices = ["GC1", "GC2"];
   const lcmsDevices = ["5500", "4500"];
 
-  useEffect(() => {
-    const stored = localStorage.getItem("reservations");
-    if (stored) setReservations(JSON.parse(stored));
-  }, []);
+  const formatTime = (datetimeStr: string) => {
+    const date = new Date(datetimeStr);
+    return date.toTimeString().slice(0, 5);
+  };
+
+  const formatDate = (datetimeStr: string) => {
+    const date = new Date(datetimeStr);
+    return date.toISOString().split("T")[0];
+  };
 
   useEffect(() => {
-    localStorage.setItem("reservations", JSON.stringify(reservations));
-  }, [reservations]);
+    const unsub = onSnapshot(collection(db, "reservations"), (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setReservations(data);
+    });
+    return () => unsub();
+  }, []);
 
   const handleSelect = (info: any) => {
     setSelectInfo(info);
-    setEditIndex(null);
+    setEditId(null);
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
-    const clicked = reservations.findIndex(
-      (r) => r.start === clickInfo.event.startStr && r.end === clickInfo.event.endStr && r.title === clickInfo.event.title
+    const found = reservations.find(
+      (r) => r.start === clickInfo.event.startStr && r.end === clickInfo.event.endStr
     );
-    if (clicked !== -1) {
-      const r = reservations[clicked];
-      setUsername(r.user);
-      setPurpose(r.purpose);
-      setSelectedInstrument(r.instrument);
-      setSelectedDevice(r.device);
-      setSelectInfo({ startStr: r.start, endStr: r.end });
-      setEditIndex(clicked);
+    if (found) {
+      setUsername(found.user);
+      setPurpose(found.purpose);
+      setSelectedInstrument(found.instrument);
+      setSelectedDevice(found.device);
+      setSelectInfo({ startStr: found.start, endStr: found.end });
+      setEditId(found.id);
     }
   };
 
@@ -52,7 +70,7 @@ export default function Scheduler() {
     return startA < endB && endA > startB;
   };
 
-  const handleReservation = () => {
+  const handleReservation = async () => {
     if (!selectInfo || !username || !purpose || selectedInstrument === "ALL" || selectedDevice === null) return;
 
     const start = selectInfo.startStr;
@@ -60,8 +78,8 @@ export default function Scheduler() {
     const date = start.split("T")[0];
 
     const isDuplicate = reservations.some(
-      (r, i) =>
-        i !== editIndex &&
+      (r) =>
+        r.id !== editId &&
         r.date === date &&
         r.instrument === selectedInstrument &&
         r.device === selectedDevice &&
@@ -73,7 +91,7 @@ export default function Scheduler() {
       return;
     }
 
-    const updatedReservation = {
+    const payload = {
       title: `${selectedInstrument} ${selectedDevice} - ${username}`,
       date,
       start,
@@ -84,13 +102,11 @@ export default function Scheduler() {
       purpose,
     };
 
-    if (editIndex !== null) {
-      const updated = [...reservations];
-      updated[editIndex] = updatedReservation;
-      setReservations(updated);
+    if (editId) {
+      await updateDoc(doc(db, "reservations", editId), payload);
       alert("예약이 수정되었습니다!");
     } else {
-      setReservations([...reservations, updatedReservation]);
+      await addDoc(collection(db, "reservations"), payload);
       alert("예약이 완료되었습니다!");
     }
 
@@ -99,24 +115,12 @@ export default function Scheduler() {
     setPurpose("");
     setSelectedInstrument("ALL");
     setSelectedDevice(null);
-    setEditIndex(null);
+    setEditId(null);
   };
 
-  const handleCancel = (index: number) => {
-    const updated = [...reservations];
-    updated.splice(index, 1);
-    setReservations(updated);
+  const handleCancel = async (id: string) => {
+    await deleteDoc(doc(db, "reservations", id));
     alert("예약이 삭제되었습니다.");
-  };
-
-  const formatTime = (datetimeStr: string) => {
-    const date = new Date(datetimeStr);
-    return date.toTimeString().slice(0, 5);
-  };
-
-  const formatDate = (datetimeStr: string) => {
-    const date = new Date(datetimeStr);
-    return date.toISOString().split("T")[0];
   };
 
   const getColorByInstrument = (instrument: string) => {
@@ -160,7 +164,6 @@ export default function Scheduler() {
         ))}
       </div>
 
-      {/* 기기별 디바이스 선택 */}
       {selectedInstrument === "HPLC" && (
         <div style={{ marginBottom: 12 }}>
           {hplcDevices.map((num) => (
@@ -180,6 +183,7 @@ export default function Scheduler() {
           ))}
         </div>
       )}
+
       {selectedInstrument === "GC" && (
         <div style={{ marginBottom: 12 }}>
           {gcDevices.map((id) => (
@@ -199,6 +203,7 @@ export default function Scheduler() {
           ))}
         </div>
       )}
+
       {selectedInstrument === "LCMS" && (
         <div style={{ marginBottom: 12 }}>
           {lcmsDevices.map((id) => (
@@ -264,19 +269,19 @@ export default function Scheduler() {
             style={{ padding: "6px", marginRight: "8px" }}
           />
           <button
-  onClick={handleReservation}
-  style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px" }}
->
-  {editIndex !== null ? "수정하기" : "예약하기"}
-</button>
-{editIndex !== null && (
-  <button
-    onClick={() => handleCancel(editIndex)}
-    style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
-  >
-    삭제하기
-  </button>
-)}
+            onClick={handleReservation}
+            style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px" }}
+          >
+            {editId !== null ? "수정하기" : "예약하기"}
+          </button>
+          {editId && (
+            <button
+              onClick={() => handleCancel(editId)}
+              style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
+            >
+              삭제하기
+            </button>
+          )}
         </div>
       )}
 
@@ -284,11 +289,11 @@ export default function Scheduler() {
         <div style={{ marginTop: 20 }}>
           <h3>오늘의 예약 😎</h3>
           <ul>
-            {todayReservations.map((r, i) => (
-              <li key={i}>
+            {todayReservations.map((r) => (
+              <li key={r.id}>
                 {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
                 <button
-                  onClick={() => handleCancel(i)}
+                  onClick={() => handleCancel(r.id)}
                   style={{ marginLeft: "10px", padding: "2px 6px" }}
                 >
                   삭제
