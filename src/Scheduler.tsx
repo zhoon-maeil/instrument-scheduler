@@ -11,7 +11,7 @@ import {
   onSnapshot,
   deleteDoc,
   updateDoc,
-  doc,
+  doc
 } from "firebase/firestore";
 import { v4 as uuidv4 } from "uuid";
 
@@ -28,22 +28,21 @@ export default function Scheduler() {
   const [endTime, setEndTime] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
 
-  const instruments = ["ALL", "HPLC", "GC", "LCMS"];
-  const hplcDevices = ["1", "2", "3", "4", "5"];
-  const gcDevices = ["GC1", "GC2"];
-  const lcmsDevices = ["5500", "4500"];
-
   useEffect(() => {
-    // UUID 저장 또는 불러오기
-    const storedUuid = localStorage.getItem("reservation-uuid");
+    const storedUuid = localStorage.getItem("user-uuid");
     if (storedUuid) {
       setUuid(storedUuid);
     } else {
       const newUuid = uuidv4();
-      localStorage.setItem("reservation-uuid", newUuid);
+      localStorage.setItem("user-uuid", newUuid);
       setUuid(newUuid);
     }
   }, []);
+
+  const instruments = ["ALL", "HPLC", "GC", "LCMS"];
+  const hplcDevices = ["1", "2", "3", "4", "5"];
+  const gcDevices = ["GC1", "GC2"];
+  const lcmsDevices = ["5500", "4500"];
 
   const formatTime = (datetimeStr: string) => {
     const date = new Date(datetimeStr);
@@ -78,38 +77,37 @@ export default function Scheduler() {
   const handleSelect = (info: any) => {
     setSelectInfo(info);
     setEditId(null);
-    setSelectedDate(info.startStr.split("T")[0]);
+    const startDate = info.startStr.split("T")[0];
+    setSelectedDate(startDate);
     setStartTime(formatTime(info.startStr));
     setEndTime(formatTime(info.endStr));
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
-    const found = reservations.find(
+    const event = reservations.find(
       (r) => r.start === clickInfo.event.startStr && r.end === clickInfo.event.endStr
     );
-    if (found) {
-      setUsername(found.user);
-      setPurpose(found.purpose);
-      setSelectedInstrument(found.instrument);
-      setSelectedDevice(found.device);
-      setSelectInfo({ startStr: found.start, endStr: found.end });
-      setEditId(found.id);
-      setSelectedDate(found.date);
-      setStartTime(formatTime(found.start));
-      setEndTime(formatTime(found.end));
+    if (event) {
+      setUsername(event.user);
+      setPurpose(event.purpose);
+      setSelectedInstrument(event.instrument);
+      setSelectedDevice(event.device);
+      setSelectedDate(event.date);
+      setStartTime(formatTime(event.start));
+      setEndTime(formatTime(event.end));
+      setEditId(event.id);
+      setSelectInfo({ startStr: event.start, endStr: event.end });
     }
   };
 
-  const combineDateTime = (date: string, time: string) => {
-    return `${date}T${time}:00`;
-  };
+  const combineDateTime = (date: string, time: string) => `${date}T${time}:00`;
 
   const isTimeOverlap = (startA: string, endA: string, startB: string, endB: string) => {
     return startA < endB && endA > startB;
   };
 
   const handleReservation = async () => {
-    if (!username || !purpose || selectedInstrument === "ALL" || selectedDevice === null || !startTime || !endTime || !selectedDate) return;
+    if (!username || !purpose || selectedInstrument === "ALL" || !selectedDevice || !startTime || !endTime || !selectedDate) return;
 
     const start = combineDateTime(selectedDate, startTime);
     const end = combineDateTime(selectedDate, endTime);
@@ -138,7 +136,7 @@ export default function Scheduler() {
       device: selectedDevice,
       user: username,
       purpose,
-      uuid,
+      uuid
     };
 
     if (editId) {
@@ -185,8 +183,7 @@ export default function Scheduler() {
     <div style={{ padding: 20 }}>
       <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>장비 예약 달력</h1>
 
-      {/* ...기기 선택 및 캘린더 생략... */}
-
+      {/* 예약 목록 */}
       {todayReservations.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <h3>오늘의 예약 😎</h3>
