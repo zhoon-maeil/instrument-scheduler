@@ -38,7 +38,7 @@ export default function Scheduler() {
 
   const instruments = ["ALL", "HPLC", "GC", "GC-MS", "LC-MS", "IC", "ICP-MS", "ICP-OES"];
   const hplcDevices = ["Agilent 1", "Agilent 2", "Agilent 3", "Shiseido 1", "Shiseido 2"];
-  const gcDevices = ["Agilent 1", "Agilent 2 - MSD", "Agilent 2 - 전자코"];
+  const gcDevices = ["Agilent 1", "Agilent 2"];
   const gcmsDevices: Record<string, string[]> = {
     "Agilent 1": [],
     "Agilent 2": ["MSD", "전자코"],
