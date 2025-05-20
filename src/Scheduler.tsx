@@ -36,6 +36,8 @@ export default function Scheduler() {
   const [endTime, setEndTime] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectInfo, setSelectInfo] = useState<DateSelectArg | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedDay, setSelectedDay] = useState<string>("");
 
   const instruments = ["ALL", "HPLC", "GC", "GC-MS", "LC-MS", "IC", "ICP-MS", "ICP-OES"];
   const hplcDevices = ["Agilent 1", "Agilent 2", "Agilent 3", "Shiseido 1", "Shiseido 2"];
@@ -73,14 +75,24 @@ export default function Scheduler() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (selectedMonth && selectedDay) {
+      const year = new Date().getFullYear();
+      const date = `${year}-${selectedMonth.padStart(2, "0")}-${selectedDay.padStart(2, "0")}`;
+      setSelectedDate(date);
+    }
+  }, [selectedMonth, selectedDay]);
+
   const handleSelect = (info: DateSelectArg) => {
+    const date = new Date(info.startStr);
     setSelectedDate(info.startStr.split("T")[0]);
+    setSelectedMonth((date.getMonth() + 1).toString());
+    setSelectedDay(date.getDate().toString());
     setStartTime(formatTime(info.startStr));
     setEndTime(formatTime(info.endStr));
     setEditId(null);
     setSelectInfo(info);
   };
-
   const handleEventClick = (clickInfo: EventClickArg) => {
     const matched = reservations.find((r) => r.id === clickInfo.event.id);
     if (!matched) return;
@@ -317,6 +329,25 @@ export default function Scheduler() {
       {(selectedInstrument !== "ALL" || selectInfo !== null) && (
         <div style={{ marginTop: 20 }}>
           <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ marginRight: 8 }}>월:</label>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              <option value="">월 선택</option>
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
+              ))}
+            </select>
+
+            <label style={{ margin: "0 8px" }}>일:</label>
+            <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)}>
+              <option value="">일 선택</option>
+              {[...Array(31)].map((_, i) => (
+                <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
+              ))}
+            </select>
+          </div>
+
           <input
             type="text"
             placeholder="이름"
@@ -378,4 +409,3 @@ export default function Scheduler() {
       )}
     </div>
   );
-}
