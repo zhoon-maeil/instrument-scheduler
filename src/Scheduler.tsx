@@ -104,6 +104,7 @@ export default function Scheduler() {
 
   const handleReservation = async () => {
     if (!username || !purpose || selectedInstrument === "ALL" || !selectedDevice || !startTime || !endTime || !selectedDate)
+      alert("모든 입력 항목을 확인해주세요!")
       return;
 
     const start = combineDateTime(selectedDate, startTime);
@@ -339,6 +340,7 @@ export default function Scheduler() {
             {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <button
+            type="button"
             onClick={handleReservation}
             style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px", marginLeft: "8px" }}
           >
