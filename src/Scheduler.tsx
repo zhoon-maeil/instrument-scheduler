@@ -103,8 +103,10 @@ export default function Scheduler() {
   };
 
   const handleReservation = async () => {
-    if (!username || !purpose || selectedInstrument === "ALL" || !selectedDevice || !startTime || !endTime || !selectedDate)
+    if (!username || !purpose || selectedInstrument === "ALL" || !selectedDevice || !startTime || !endTime || !selectedDate) {
+      alert("모든 필드를 정확히 입력해 주세요.");
       return;
+    }
 
     const start = combineDateTime(selectedDate, startTime);
     const end = combineDateTime(selectedDate, endTime);
@@ -140,7 +142,7 @@ export default function Scheduler() {
     if (editId) {
       const confirmEdit = window.confirm("예약을 수정하시겠습니까?");
       if (!confirmEdit) return;
-      await updateDoc(doc(db, "reservations", editId), payload);
+      await updateDoc(doc(db, "reservations", editId!), payload);
       alert("예약이 수정되었습니다!");
     } else {
       await setDoc(doc(db, "reservations", payload.id), payload);
@@ -223,65 +225,6 @@ export default function Scheduler() {
         ))}
       </div>
 
-      {selectedInstrument === "GC-MS" && (
-        <>
-          <div style={{ marginBottom: 12 }}>
-            {Object.keys(gcmsDevices).map((device) => (
-              <button
-                key={device}
-                onClick={() => {
-                  setSelectedDevice(device);
-                  setSelectedSubDevice(null);
-                }}
-                style={{
-                  marginRight: 8,
-                  padding: "6px 12px",
-                  backgroundColor: selectedDevice === device ? "#aaa" : "#eee",
-                  color: selectedDevice === device ? "white" : "black",
-                  borderRadius: 4,
-                }}
-              >
-                {device}
-              </button>
-            ))}
-          </div>
-          {selectedDevice && gcmsDevices[selectedDevice]?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <select
-                value={selectedSubDevice || ""}
-                onChange={(e) => setSelectedSubDevice(e.target.value)}
-                style={{ padding: "6px" }}
-              >
-                <option value="">서브 디바이스 선택</option>
-                {gcmsDevices[selectedDevice].map((sub) => (
-                  <option key={sub} value={sub}>{sub}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </>
-      )}
-
-      {selectedInstrument !== "ALL" && selectedInstrument !== "GC-MS" && (
-        <div style={{ marginBottom: 12 }}>
-          {getDevices(selectedInstrument).map((id) => (
-            <button
-              key={id}
-              onClick={() => setSelectedDevice(id)}
-              style={{
-                marginRight: 8,
-                padding: "6px 12px",
-                backgroundColor: selectedDevice === id ? "#aaa" : "#eee",
-                color: selectedDevice === id ? "white" : "black",
-                borderRadius: 4,
-              }}
-            >
-              {id}
-            </button>
-          ))}
-        </div>
-      )}
-
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
@@ -313,7 +256,7 @@ export default function Scheduler() {
         slotEventOverlap={false}
       />
 
-      {(selectedInstrument !== "ALL" || selectInfo !== null) && (
+      {(selectInfo !== null || selectedInstrument !== "ALL") && (
         <div style={{ marginTop: 20 }}>
           <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
           <input
@@ -339,6 +282,7 @@ export default function Scheduler() {
             {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <button
+            type="button"
             onClick={handleReservation}
             style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px", marginLeft: "8px" }}
           >
@@ -346,6 +290,7 @@ export default function Scheduler() {
           </button>
           {editId && (
             <button
+              type="button"
               onClick={() => handleCancel(editId)}
               style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
             >
@@ -355,7 +300,7 @@ export default function Scheduler() {
         </div>
       )}
 
-      {(selectedInstrument !== "ALL" || selectInfo !== null) && todayReservations.length > 0 && (
+      {todayReservations.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <h3>오늘의 예약 😎</h3>
           <ul>
@@ -364,6 +309,7 @@ export default function Scheduler() {
                 {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
                 {r.userUUID === userUUID && (
                   <button
+                    type="button"
                     onClick={() => handleCancel(r.id)}
                     style={{ marginLeft: "10px", padding: "2px 6px" }}
                   >
