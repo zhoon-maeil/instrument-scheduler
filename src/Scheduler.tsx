@@ -195,7 +195,7 @@ export default function Scheduler() {
   const filteredReservations = selectedInstrument === "ALL"
     ? reservations
     : reservations.filter((r) => r.instrument === selectedInstrument);
-  const todayReservations = filteredReservations.filter((r) => r.date === today);
+  const todayReservations = reservations.filter((r) => r.date === today);
 
   return (
     <div style={{ padding: 20 }}>
