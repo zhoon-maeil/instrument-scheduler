@@ -3,13 +3,12 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { DateSelectArg, EventClickArg } from "@fullcalendar/core";
+import { DateSelectArg } from "@fullcalendar/core";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "./firebase";
 import {
   collection,
   onSnapshot,
-  deleteDoc,
   updateDoc,
   doc,
   setDoc,
@@ -55,8 +54,8 @@ export default function Scheduler() {
   const icpoesDevices = ["Perkin"];
 
   const formatTime = (datetimeStr: string) => new Date(datetimeStr).toTimeString().slice(0, 5);
-  const formatDate = (datetimeStr: string) => new Date(datetimeStr).toISOString().split("T")[0];
   const combineDateTime = (date: string, time: string) => `${date}T${time}:00`;
+  const today = new Date().toISOString().split("T")[0];
 
   const timeOptions = Array.from({ length: 21 }, (_, i) => {
     const hour = 8 + Math.floor(i / 2);
@@ -156,6 +155,11 @@ export default function Scheduler() {
     setSelectInfo(null);
   };
 
+  const allEvents = [
+    ...reservations.map((r) => ({ ...r, source: "예약" })),
+    ...repairs.map((r) => ({ ...r, source: "수리" })),
+  ];
+
   const getColorByType = (source: string, instrument: string) => {
     if (source === "수리") return { background: "#ffc107", border: "#d39e00" };
     switch (instrument) {
@@ -170,10 +174,7 @@ export default function Scheduler() {
     }
   };
 
-  const allEvents = [
-    ...reservations.map((r) => ({ ...r, source: "예약" })),
-    ...repairs.map((r) => ({ ...r, source: "수리" })),
-  ];
+  const todayReservations = reservations.filter((r) => r.date === today);
 
   return (
     <div style={{ padding: 20 }}>
@@ -230,191 +231,7 @@ export default function Scheduler() {
           </button>
         </div>
       )}
-    </div>
-  );
-}
 
-  const today = new Date().toISOString().split("T")[0];
-  const filteredReservations = selectedInstrument === "ALL"
-    ? reservations
-    : reservations.filter((r) => r.instrument === selectedInstrument);
-  const todayReservations = reservations.filter((r) => r.date === today);
-
-  return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>장비 예약 달력</h1>
-
-      <div style={{ marginBottom: 12 }}>
-        {instruments.map((inst) => (
-          <button
-            key={inst}
-            onClick={() => {
-              setSelectedInstrument(inst);
-              setSelectedDevice(null);
-              setSelectedSubDevice(null);
-            }}
-            style={{
-              marginRight: 8,
-              padding: "6px 12px",
-              backgroundColor: selectedInstrument === inst ? "#343a40" : "#eee",
-              color: selectedInstrument === inst ? "white" : "black",
-              borderRadius: 4,
-            }}
-          >
-            {inst === "ALL" ? "전체" : inst}
-          </button>
-        ))}
-      </div>
-      {selectedInstrument === "GC-MS" && (
-        <>
-          <div style={{ marginBottom: 12 }}>
-            {Object.keys(gcmsDevices).map((device) => (
-              <button
-                key={device}
-                onClick={() => {
-                  setSelectedDevice(device);
-                  setSelectedSubDevice(null);
-                }}
-                style={{
-                  marginRight: 8,
-                  padding: "6px 12px",
-                  backgroundColor: selectedDevice === device ? "#aaa" : "#eee",
-                  color: selectedDevice === device ? "white" : "black",
-                  borderRadius: 4,
-                }}
-              >
-                {device}
-              </button>
-            ))}
-          </div>
-          {selectedDevice && gcmsDevices[selectedDevice]?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <select
-                value={selectedSubDevice || ""}
-                onChange={(e) => setSelectedSubDevice(e.target.value)}
-                style={{ padding: "6px" }}
-              >
-                <option value="">서브 디바이스 선택</option>
-                {gcmsDevices[selectedDevice].map((sub) => (
-                  <option key={sub} value={sub}>{sub}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </>
-      )}
-
-      {selectedInstrument !== "ALL" && selectedInstrument !== "GC-MS" && (
-        <div style={{ marginBottom: 12 }}>
-          {getDevices(selectedInstrument).map((id) => (
-            <button
-              key={id}
-              onClick={() => setSelectedDevice(id)}
-              style={{
-                marginRight: 8,
-                padding: "6px 12px",
-                backgroundColor: selectedDevice === id ? "#aaa" : "#eee",
-                color: selectedDevice === id ? "white" : "black",
-                borderRadius: 4,
-              }}
-            >
-              {id}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
-        selectable={true}
-        select={handleSelect}
-        eventClick={handleEventClick}
-        allDaySlot={false}
-        events={filteredReservations.map((r) => {
-          const colors = getColorByInstrument(r.instrument);
-          return {
-            id: r.id,
-            title: r.title,
-            start: r.start,
-            end: r.end,
-            backgroundColor: colors.background,
-            borderColor: colors.border,
-            textColor: "white",
-          };
-        })}
-        eventContent={(arg) => (
-          <div style={{ fontSize: "10px", padding: "0 2px" }}>
-            {arg.event.title}
-          </div>
-        )}
-        height="auto"
-        slotMinTime="08:00:00"
-        slotMaxTime="18:00:00"
-        slotDuration="00:30:00"
-        slotEventOverlap={false}
-      />
-
-      {(selectedInstrument !== "ALL" || selectInfo !== null) && (
-        <div style={{ marginTop: 20 }}>
-          <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ marginRight: 8 }}>월:</label>
-            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-              <option value="">월 선택</option>
-              {[...Array(12)].map((_, i) => (
-                <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
-              ))}
-            </select>
-
-            <label style={{ margin: "0 8px" }}>일:</label>
-            <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)}>
-              <option value="">일 선택</option>
-              {[...Array(31)].map((_, i) => (
-                <option key={i + 1} value={(i + 1).toString()}>{i + 1}</option>
-              ))}
-            </select>
-          </div>
-
-          <input
-            type="text"
-            placeholder="이름"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            style={{ padding: "6px", marginRight: "8px" }}
-          />
-          <input
-            type="text"
-            placeholder="사용 목적"
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-            style={{ padding: "6px", marginRight: "8px" }}
-          />
-          <select value={startTime} onChange={(e) => setStartTime(e.target.value)}>
-            <option value="">시작 시간 선택</option>
-            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ marginLeft: "8px" }}>
-            <option value="">종료 시간 선택</option>
-            {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <button
-            onClick={handleReservation}
-            style={{ padding: "6px 12px", backgroundColor: "#007bff", color: "white", borderRadius: "4px", marginLeft: "8px" }}
-          >
-            {editId ? "수정하기" : "예약하기"}
-          </button>
-          {editId && (
-            <button
-              onClick={() => handleCancel(editId)}
-              style={{ marginLeft: "8px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", borderRadius: "4px" }}
-            >
-              삭제하기
-            </button>
-          )}
-        </div>
-      )}
       {(todayReservations.length > 0) && (
         <div style={{ marginTop: 20 }}>
           <h3>오늘의 예약 😎</h3>
@@ -422,15 +239,6 @@ export default function Scheduler() {
             {todayReservations.map((r) => (
               <li key={r.id}>
                 {r.date} - {r.instrument} {r.device} - {formatTime(r.start)} ~ {formatTime(r.end)} - {r.user} ({r.purpose})
-                {r.userUUID === userUUID && (
-                  <button
-                    type="button"
-                    onClick={() => handleCancel(r.id)}
-                    style={{ marginLeft: "10px", padding: "2px 6px" }}
-                  >
-                    삭제
-                  </button>
-                )}
               </li>
             ))}
           </ul>
@@ -438,3 +246,4 @@ export default function Scheduler() {
       )}
     </div>
   );
+}
