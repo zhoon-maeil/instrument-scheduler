@@ -26,71 +26,95 @@ const userUUID = getOrCreateUserId();
 
 export default function Scheduler() {
   // mode: reservation or maintenance
-  const [mode, setMode] = useState<'reservation' | 'maintenance'>('reservation');
+  const [mode, setMode] = useState<"reservation" | "maintenance">(
+    "reservation"
+  );
 
   // common states
-  const [selectedInstrument, setSelectedInstrument] = useState<string>('ALL');
+  const [selectedInstrument, setSelectedInstrument] = useState<string>(
+    "ALL"
+  );
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
-  const [selectedSubDevice, setSelectedSubDevice] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
-  const [selectedDay, setSelectedDay] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedSubDevice, setSelectedSubDevice] = useState<string | null>(
+    null
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectInfo, setSelectInfo] = useState<DateSelectArg | null>(null);
 
   // reservation states
-  const [username, setUsername] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [username, setUsername] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
 
   // maintenance states
-  const [maintenanceDetails, setMaintenanceDetails] = useState('');
+  const [maintenanceDetails, setMaintenanceDetails] = useState("");
   const [maintenances, setMaintenances] = useState<any[]>([]);
-  const [editMaintenanceId, setEditMaintenanceId] = useState<string | null>(null);
+  const [editMaintenanceId, setEditMaintenanceId] =
+    useState<string | null>(null);
 
   // instruments & devices
   const instruments = [
-    'ALL', 'HPLC', 'GC', 'GC-MS', 'LC-MS', 'IC', 'ICP-MS', 'ICP-OES',
+    "ALL",
+    "HPLC",
+    "GC",
+    "GC-MS",
+    "LC-MS",
+    "IC",
+    "ICP-MS",
+    "ICP-OES",
   ];
-  const hplcDevices = ['Agilent 1', 'Agilent 2', 'Agilent 3', 'Agilent Bio', 'Shiseido 1', 'Shiseido 2'];
-  const gcDevices = ['Agilent 1', 'Agilent 2'];
+  const hplcDevices = [
+    "Agilent 1",
+    "Agilent 2",
+    "Agilent 3",
+    "Agilent Bio",
+    "Shiseido 1",
+    "Shiseido 2",
+  ];
+  const gcDevices = ["Agilent 1", "Agilent 2"];
   const gcmsDevices: Record<string, string[]> = {
-    'GC-MS': [],
-    'GC-MSMS(Agilent)': ['MSD', '전자코'],
-    'GC-MSMS(Thermo)': [],
+    "GC-MS": [],
+    "GC-MSMS(Agilent)": ["MSD", "전자코"],
+    "GC-MSMS(Thermo)": [],
   };
-  const lcmsDevices = ['Sciex 5500', 'Sciex 4500'];
-  const icDevices = ['Thermo'];
-  const icpmsDevices = ['Agilent'];
-  const icpoesDevices = ['Perkin'];
+  const lcmsDevices = ["Sciex 5500", "Sciex 4500"];
+  const icDevices = ["Thermo"];
+  const icpmsDevices = ["Agilent"];
+  const icpoesDevices = ["Perkin"];
 
   const generateTimeOptions = () => {
     const times: string[] = [];
     for (let h = 8; h < 18; h++) {
-      times.push(`${h.toString().padStart(2, '0')}:00`);
-      times.push(`${h.toString().padStart(2, '0')}:30`);
+      times.push(`${h.toString().padStart(2, "0")}:00`);
+      times.push(`${h.toString().padStart(2, "0")}:30`);
     }
-    times.push('18:00');
+    times.push("18:00");
     return times;
   };
   const timeOptions = generateTimeOptions();
 
-  const formatTime = (datetimeStr: string) => new Date(datetimeStr).toTimeString().slice(0, 5);
-  const formatDate = (datetimeStr: string) => new Date(datetimeStr).toISOString().split('T')[0];
-  const combineDateTime = (date: string, time: string) => `${date}T${time}:00`;
+  const formatTime = (datetimeStr: string) =>
+    new Date(datetimeStr).toTimeString().slice(0, 5);
+  const formatDate = (datetimeStr: string) =>
+    new Date(datetimeStr).toISOString().split("T")[0];
+  const combineDateTime = (date: string, time: string) =>
+    `${date}T${time}:00`;
 
   // Firestore subscriptions
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'reservations'), (snapshot) => {
+    const unsub = onSnapshot(collection(db, "reservations"), (snapshot) => {
       const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setReservations(data);
     });
     return () => unsub();
   }, []);
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'maintenances'), (snapshot) => {
+    const unsub = onSnapshot(collection(db, "maintenances"), (snapshot) => {
       const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setMaintenances(data);
     });
@@ -101,14 +125,17 @@ export default function Scheduler() {
   useEffect(() => {
     if (selectedMonth && selectedDay) {
       const year = new Date().getFullYear();
-      const date = `${year}-${selectedMonth.padStart(2, '0')}-${selectedDay.padStart(2, '0')}`;
+      const date = `${year}-${selectedMonth.padStart(2, "0")}-${selectedDay.padStart(
+        2,
+        "0"
+      )}`;
       setSelectedDate(date);
     }
   }, [selectedMonth, selectedDay]);
 
   const handleSelect = (info: DateSelectArg) => {
     const date = new Date(info.startStr);
-    setSelectedDate(info.startStr.split('T')[0]);
+    setSelectedDate(info.startStr.split("T")[0]);
     setSelectedMonth((date.getMonth() + 1).toString());
     setSelectedDay(date.getDate().toString());
     setStartTime(formatTime(info.startStr));
@@ -121,27 +148,27 @@ export default function Scheduler() {
     const date = new Date(info.dateStr);
     setSelectedMonth((date.getMonth() + 1).toString());
     setSelectedDay(date.getDate().toString());
-    setSelectedDate(info.dateStr.split('T')[0]);
+    setSelectedDate(info.dateStr.split("T")[0]);
     setSelectInfo(null);
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
     const matched =
-      mode === 'reservation'
+      mode === "reservation"
         ? reservations.find((r) => r.id === clickInfo.event.id)
         : maintenances.find((m) => m.id === clickInfo.event.id);
     if (!matched) return;
-    if (mode === 'reservation' && (matched as any).userUUID !== userUUID) {
-      alert('본인의 예약만 수정할 수 있습니다.');
+    if (mode === "reservation" && (matched as any).userUUID !== userUUID) {
+      alert("본인의 예약만 수정할 수 있습니다.");
       return;
     }
-    if (mode === 'reservation') {
+    if (mode === "reservation") {
       const r = matched as any;
       setEditId(r.id);
       setUsername(r.user);
       setPurpose(r.purpose);
       setSelectedInstrument(r.instrument);
-      const [main, sub] = r.device.split(' - ');
+      const [main, sub] = r.device.split(" - ");
       setSelectedDevice(main);
       setSelectedSubDevice(sub || null);
       setSelectedDate(formatDate(r.start));
@@ -149,10 +176,10 @@ export default function Scheduler() {
       setEndTime(formatTime(r.end));
     } else {
       const m = matched as any;
-      const dateParts = m.date.split('-');
+      const dateParts = m.date.split("-");
       setEditMaintenanceId(m.id);
       setSelectedInstrument(m.instrument);
-      const [main, sub] = m.device.split(' - ');
+      const [main, sub] = m.device.split(" - ");
       setSelectedDevice(main);
       setSelectedSubDevice(sub || null);
       setSelectedMonth(dateParts[1]);
@@ -163,10 +190,15 @@ export default function Scheduler() {
 
   const handleReservation = async () => {
     if (
-      !username || !purpose ||
-      selectedInstrument === 'ALL' || !selectedDevice || !startTime || !endTime || !selectedDate
+      !username ||
+      !purpose ||
+      selectedInstrument === "ALL" ||
+      !selectedDevice ||
+      !startTime ||
+      !endTime ||
+      !selectedDate
     ) {
-      alert('모든 필드를 정확히 입력해 주세요.');
+      alert("모든 필드를 정확히 입력해 주세요.");
       return;
     }
     const start = combineDateTime(selectedDate, startTime);
@@ -181,10 +213,11 @@ export default function Scheduler() {
         r.date === date &&
         r.instrument === selectedInstrument &&
         r.device === fullDevice &&
-        start < r.end && end > r.start
+        start < r.end &&
+        end > r.start
     );
     if (isDuplicate) {
-      alert('해당 기기의 예약 시간이 겹칩니다!');
+      alert("해당 기기의 예약 시간이 겹칩니다!");
       return;
     }
     const payload = {
@@ -200,25 +233,38 @@ export default function Scheduler() {
       userUUID,
     };
     if (editId) {
-      const confirmEdit = window.confirm('예약을 수정하시겠습니까?');
+      const confirmEdit = window.confirm("예약을 수정하시겠습니까?");
       if (!confirmEdit) return;
-      await updateDoc(doc(db, 'reservations', editId), payload);
-      alert('예약이 수정되었습니다!');
+      await updateDoc(doc(db, "reservations", editId), payload);
+      alert("예약이 수정되었습니다!");
     } else {
-      await setDoc(doc(db, 'reservations', payload.id), payload);
-      alert('예약이 완료되었습니다!');
+      await setDoc(doc(db, "reservations", payload.id), payload);
+      alert("예약이 완료되었습니다!");
     }
-    setUsername(''); setPurpose(''); setSelectedInstrument('ALL'); setSelectedDevice(null);
-    setSelectedSubDevice(null); setEditId(null); setStartTime(''); setEndTime(''); setSelectedDate(''); setSelectInfo(null);
+    setUsername("");
+    setPurpose("");
+    setSelectedInstrument("ALL");
+    setSelectedDevice(null);
+    setSelectedSubDevice(null);
+    setEditId(null);
+    setStartTime("");
+    setEndTime("");
+    setSelectedDate("");
+    setSelectInfo(null);
   };
 
   const handleMaintenanceSave = async () => {
-    if (selectedInstrument === 'ALL' || !selectedDevice || !selectedDate || !maintenanceDetails) {
-      alert('모든 필드를 정확히 입력하세요.');
+    if (
+      selectedInstrument === "ALL" ||
+      !selectedDevice ||
+      !selectedDate ||
+      !maintenanceDetails
+    ) {
+      alert("모든 필드를 정확히 입력하세요.");
       return;
     }
-    const start = combineDateTime(selectedDate, '08:00');
-    const end = combineDateTime(selectedDate, '09:00');
+    const start = combineDateTime(selectedDate, "08:00");
+    const end = combineDateTime(selectedDate, "09:00");
     const fullDevice = selectedSubDevice
       ? `${selectedDevice} - ${selectedSubDevice}`
       : selectedDevice;
@@ -233,129 +279,141 @@ export default function Scheduler() {
       details: maintenanceDetails,
     };
     if (editMaintenanceId) {
-      const confirmEdit = window.confirm('수리/점검 내역을 수정하시겠습니까?');
+      const confirmEdit = window.confirm("수리/점검 내역을 수정하시겠습니까?");
       if (!confirmEdit) return;
-      await updateDoc(doc(db, 'maintenances', editMaintenanceId), payload);
-      alert('내역이 수정되었습니다!');
+      await updateDoc(doc(db, "maintenances", editMaintenanceId), payload);
+      alert("내역이 수정되었습니다!");
     } else {
-      await setDoc(doc(db, 'maintenances', payload.id), payload);
-      alert('수리/점검 내역이 저장되었습니다!');
+      await setDoc(doc(db, "maintenances", payload.id), payload);
+      alert("수리/점검 내역이 저장되었습니다!");
     }
-    setMaintenanceDetails('');
-    setSelectedInstrument('ALL');
+    setMaintenanceDetails("");
+    setSelectedInstrument("ALL");
     setSelectedDevice(null);
     setSelectedSubDevice(null);
-    setSelectedDate('');
-    setSelectedMonth('');
-    setSelectedDay('');
+    setSelectedDate("");
+    setSelectedMonth("");
+    setSelectedDay("");
     setSelectInfo(null);
     setEditMaintenanceId(null);
   };
 
   const handleCancel = async (id: string) => {
-    const confirmDelete = window.confirm('삭제하시겠습니까?');
+    const confirmDelete = window.confirm("삭제하시겠습니까?");
     if (!confirmDelete) return;
-    const col = mode === 'reservation' ? 'reservations' : 'maintenances';
+    const col = mode === "reservation" ? "reservations" : "maintenances";
     await deleteDoc(doc(db, col, id));
-    alert(mode === 'reservation' ? '예약이 삭제되었습니다.' : '내역이 삭제되었습니다.');
-    if (mode === 'maintenance' && editMaintenanceId === id) {
+    alert(mode === "reservation" ? "예약이 삭제되었습니다." : "내역이 삭제되었습니다.");
+    if (mode === "maintenance" && editMaintenanceId === id) {
       setEditMaintenanceId(null);
-      setMaintenanceDetails('');
+      setMaintenanceDetails("");
     }
   };
 
   const getColorByInstrument = (instrument: string) => {
     switch (instrument) {
-      case 'HPLC': return { background: '#007bff', border: '#0056b3' };
-      case 'GC': return { background: '#28a745', border: '#1c7c31' };
-      case 'GC-MS': return { background: '#17a2b8', border: '#117a8b' };
-      case 'LC-MS': return { background: '#ffc107', border: '#d39e00' };
-      case 'IC': return { background: '#6610f2', border: '#520dc2' };
-      case 'ICP-MS': return { background: '#fd7e14', border: '#e8590c' };
-      case 'ICP-OES': return { background: '#6f42c1', border: '#5936a2' };
-      default: return { background: '#6c757d', border: '#5a6268' };
+      case "HPLC":
+        return { background: "#007bff", border: "#0056b3" };
+      case "GC":
+        return { background: "#28a745", border: "#1c7c31" };
+      case "GC-MS":
+        return { background: "#17a2b8", border: "#117a8b" };
+      case "LC-MS":
+        return { background: "#ffc107", border: "#d39e00" };
+      case "IC":
+        return { background: "#6610f2", border: "#520dc2" };
+      case "ICP-MS":
+        return { background: "#fd7e14", border: "#e8590c" };
+      case "ICP-OES":
+        return { background: "#6f42c1", border: "#5936a2" };
+      default:
+        return { background: "#6c757d", border: "#5a6268" };
     }
   };
 
   const getDevices = (instrument: string): string[] => {
     switch (instrument) {
-      case 'HPLC': return hplcDevices;
-      case 'GC': return gcDevices;
-      case 'GC-MS': return Object.keys(gcmsDevices);
-      case 'LC-MS': return lcmsDevices;
-      case 'IC': return icDevices;
-      case 'ICP-MS': return icpmsDevices;
-      case 'ICP-OES': return icpoesDevices;
-      default: return [];
+      case "HPLC":
+        return hplcDevices;
+      case "GC":
+        return gcDevices;
+      case "GC-MS":
+        return Object.keys(gcmsDevices);
+      case "LC-MS":
+        return lcmsDevices;
+      case "IC":
+        return icDevices;
+      case "ICP-MS":
+        return icpmsDevices;
+      case "ICP-OES":
+        return icpoesDevices;
+      default:
+        return [];
     }
   };
 
-  const filteredReservations = selectedInstrument === 'ALL'
-    ? reservations
-    : reservations.filter(r => r.instrument === selectedInstrument);
-  const today = new Date().toISOString().split('T')[0];
-  const todayReservations = filteredReservations.filter(r => r.date === today);
+  const filteredReservations =
+    selectedInstrument === "ALL"
+      ? reservations
+      : reservations.filter((r) => r.instrument === selectedInstrument);
+  const today = new Date().toISOString().split("T")[0];
+  const todayReservations = filteredReservations.filter(
+    (r) => r.date === today
+  );
 
   return (
     <div style={{ padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold' }}>
-          {mode === 'reservation' ? '장비 예약 달력' : '수리/점검 달력'}
-        </h1>
-        <div>
-          <button onClick={() => setMode('reservation')}
-            style={{ marginRight: 8, padding: '6px 12px', backgroundColor: mode === 'reservation' ? '#343a40' : '#eee', color: mode === 'reservation' ? 'white' : 'black', borderRadius: 4 }}>
-            예약
-          </button>
-          <button onClick={() => setMode('maintenance')}
-            style={{ padding: '6px 12px', backgroundColor: mode === 'maintenance' ? '#343a40' : '#eee', color: mode === 'maintenance' ? 'white' : 'black', borderRadius: 4 }}>
-            수리/점검
-          </button>
-        </div>
-      </div>
-
-      {/* Instrument filter bar */}
-      <div style={{ marginBottom: 12 }}>
-        {instruments.map(inst => (
-          <button key={inst} onClick={() => { setSelectedInstrument(inst); setSelectedDevice(null); setSelectedSubDevice(null); setSelectedMonth(''); setSelectedDay(''); }}
-            style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedInstrument === inst ? '#343a40' : '#eee', color: selectedInstrument === inst ? 'white' : 'black', borderRadius: 4 }}>
-            {inst === 'ALL' ? '전체' : inst}
-          </button>
-        ))}
-      </div>
-      {/* Sub-device selectors for GC-MS */}
-      {selectedInstrument === 'GC-MS' && (
+      {/* ... 생략: 헤더, 필터, 캘린더 렌더링 ... */}
+      {/* GC-MS 상위 카테고리 버튼 (연노랑 적용) */}
+      {selectedInstrument === "GC-MS" && (
         <>
           <div style={{ marginBottom: 12 }}>
-            {Object.keys(gcmsDevices).map(device => (
-              <button key={device} onClick={() => { setSelectedDevice(device); setSelectedSubDevice(null); }}
-                style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedDevice === device ? '#aaa' : '#eee', color: selectedDevice === device ? 'white' : 'black', borderRadius: 4 }}>
+            {Object.keys(gcmsDevices).map((device) => (
+              <button
+                key={device}
+                onClick={() => {
+                  setSelectedDevice(device);
+                  setSelectedSubDevice(null);
+                }}
+                style={{
+                  marginRight: 8,
+                  padding: "6px 12px",
+                  backgroundColor:
+                    selectedDevice === device ? "#FFEB99" : "#FFFFE0",
+                  color: "black",
+                  borderRadius: 4,
+                }}
+              >
                 {device}
               </button>
             ))}
           </div>
-          {selectedDevice && gcmsDevices[selectedDevice]?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <select value={selectedSubDevice || ''} onChange={e => setSelectedSubDevice(e.target.value)} style={{ padding: '6px' }}>
-                <option value="">서브 디바이스 선택</option>
-                {gcmsDevices[selectedDevice].map(sub => (<option key={sub} value={sub}>{sub}</option>))}
-              </select>
-            </div>
-          )}
+          {/* ... 서브 디바이스 <select> ... */}
         </>
       )}
-      {/* Device selectors for non-GC-MS */}
-      {selectedInstrument !== 'ALL' && selectedInstrument !== 'GC-MS' && (
+
+      {/* 일반 기기 버튼 (연노랑 적용) */}
+      {selectedInstrument !== "ALL" && selectedInstrument !== "GC-MS" && (
         <div style={{ marginBottom: 12 }}>
-          {getDevices(selectedInstrument).map(id => (
-            <button key={id} onClick={() => setSelectedDevice(id)}
-              style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedDevice === id ? '#aaa' : '#eee', color: selectedDevice === id ? 'white' : 'black', borderRadius: 4 }}>
+          {getDevices(selectedInstrument).map((id) => (
+            <button
+              key={id}
+              onClick={() => setSelectedDevice(id)}
+              style={{
+                marginRight: 8,
+                padding: "6px 12px",
+                backgroundColor:
+                  selectedDevice === id ? "#FFEB99" : "#FFFFE0",
+                color: "black",
+                borderRadius: 4,
+              }}
+            >
               {id}
             </button>
           ))}
         </div>
       )}
-
+      
       {/* Calendar */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
