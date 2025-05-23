@@ -303,7 +303,12 @@ export default function Scheduler() {
       </div>
 
       {/* Instrument filter bar */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={{
+        marginBottom: 12,
+        padding: '12px 0',          // 내부 패딩 추가
+        background: '#f7f7f7',      // 상위(Instrument) 바: 연회색
+        borderRadius: 8
+      }}>
         {instruments.map(inst => (
           <button key={inst} onClick={() => { setSelectedInstrument(inst); setSelectedDevice(null); setSelectedSubDevice(null); setSelectedMonth(''); setSelectedDay(''); }}
             style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedInstrument === inst ? '#343a40' : '#eee', color: selectedInstrument === inst ? 'white' : 'black', borderRadius: 4 }}>
@@ -334,7 +339,12 @@ export default function Scheduler() {
       )}
       {/* Device selectors for non-GC-MS */}
       {selectedInstrument !== 'ALL' && selectedInstrument !== 'GC-MS' && (
-        <div style={{ marginBottom: 12 }}>
+        <div style={{
+          marginBottom: 12,
+          padding: '12px 0',           // 내부 패딩 추가
+          background: '#fff9db',       // 하위(Device) 바: 연노랑
+          borderRadius: 8
+        }}>
           {getDevices(selectedInstrument).map(id => (
             <button key={id} onClick={() => setSelectedDevice(id)}
               style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedDevice === id ? '#aaa' : '#eee', color: selectedDevice === id ? 'white' : 'black', borderRadius: 4 }}>
