@@ -40,14 +40,14 @@ export default function Scheduler() {
   const [selectedDay, setSelectedDay] = useState<string>("");
 
   const instruments = ["ALL", "HPLC", "GC", "GC-MS", "LC-MS", "IC", "ICP-MS", "ICP-OES"];
-  const hplcDevices = ["Agilent 1", "Agilent 2", "Agilent 3", "Shiseido 1", "Shiseido 2"];
+  const hplcDevices = ["Agilent 1", "Agilent 2", "Agilent 3", "Agilent Bio", "Shiseido 1", "Shiseido 2"];
   const gcDevices = ["Agilent 1", "Agilent 2"];
   const gcmsDevices: Record<string, string[]> = {
-    "Agilent 1": [],
-    "Agilent 2": ["MSD", "전자코"],
-    "Thermo": []
+    "GC-MS": [],
+    "GC-MSMS(Agilent)": ["MSD", "전자코"],
+    "GC-MSMS(Thermo)": []
   };
-  const lcmsDevices = ["Sciex 1", "Sciex 2"];
+  const lcmsDevices = ["Sciex 5500", "Sciex 4500"];
   const icDevices = ["Thermo"];
   const icpmsDevices = ["Agilent"];
   const icpoesDevices = ["Perkin"];
