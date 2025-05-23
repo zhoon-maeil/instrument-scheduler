@@ -1,3 +1,4 @@
+나의 말:
 import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -305,22 +306,8 @@ export default function Scheduler() {
       {/* Instrument filter bar */}
       <div style={{ marginBottom: 12 }}>
         {instruments.map(inst => (
-          <button
-            key={inst}
-            onClick={() => {
-              setSelectedInstrument(inst);
-              setSelectedDevice(null);
-              setSelectedSubDevice(null);
-              setSelectedMonth('');
-              setSelectedDay('');
-            }}
-            style={{
-              marginRight: 8,
-              padding: '6px 12px',
-              backgroundColor: selectedInstrument === inst ? '#343a40' : '#eee', // 기존코드
-              color: selectedInstrument === inst ? 'white' : 'black',
-              borderRadius: 4
-            }}>
+          <button key={inst} onClick={() => { setSelectedInstrument(inst); setSelectedDevice(null); setSelectedSubDevice(null); setSelectedMonth(''); setSelectedDay(''); }}
+            style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedInstrument === inst ? '#343a40' : '#eee', color: selectedInstrument === inst ? 'white' : 'black', borderRadius: 4 }}>
             {inst === 'ALL' ? '전체' : inst}
           </button>
         ))}
@@ -350,21 +337,14 @@ export default function Scheduler() {
       {selectedInstrument !== 'ALL' && selectedInstrument !== 'GC-MS' && (
         <div style={{ marginBottom: 12 }}>
           {getDevices(selectedInstrument).map(id => (
-            <button
-              key={id}
-              onClick={() => setSelectedDevice(id)}
-              style={{
-                marginRight: 8,
-                padding: '6px 12px',
-                backgroundColor: selectedDevice === id ? '#aaa' : '#eee', // 기존코드
-                color: selectedDevice === id ? 'white' : 'black',
-                borderRadius: 4
-              }}>
+            <button key={id} onClick={() => setSelectedDevice(id)}
+              style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedDevice === id ? '#aaa' : '#eee', color: selectedDevice === id ? 'white' : 'black', borderRadius: 4 }}>
               {id}
             </button>
           ))}
         </div>
       )}
+
       {/* Calendar */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
