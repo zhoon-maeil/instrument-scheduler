@@ -117,6 +117,14 @@ export default function Scheduler() {
     setSelectInfo(info);
   };
 
+  const handleMaintenanceDateClick = (info: { dateStr: string }) => {
+    const date = new Date(info.dateStr);
+    setSelectedMonth((date.getMonth() + 1).toString());
+    setSelectedDay(date.getDate().toString());
+    setSelectedDate(info.dateStr.split('T')[0]);
+    setSelectInfo(null); // 필요시
+  };
+
   const handleEventClick = (clickInfo: EventClickArg) => {
     const matched =
       mode === 'reservation'
@@ -342,6 +350,7 @@ export default function Scheduler() {
         initialView="timeGridWeek"
         selectable={mode === 'reservation'}
         select={mode === 'reservation' ? handleSelect : undefined}
+        dateClick={mode === 'maintenance' ? handleMaintenanceDateClick : undefined}
         eventClick={handleEventClick}
         allDaySlot={false}
         events={
@@ -376,7 +385,7 @@ export default function Scheduler() {
       {/* Today's reservations list for ALL */}
       {mode === 'reservation' && selectedInstrument === 'ALL' && (
         <div style={{ marginTop: 20 }}>
-          <h3>오늘의 예약</h3>
+          <h3>오늘의 예약😎</h3>
           {todayReservations.length > 0 ? (
             todayReservations.map(r => (
               <div key={r.id} style={{ marginBottom: 4 }}>
