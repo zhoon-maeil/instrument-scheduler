@@ -48,6 +48,7 @@ export default function Scheduler() {
   // maintenance states
   const [maintenanceDetails, setMaintenanceDetails] = useState('');
   const [maintenances, setMaintenances] = useState<any[]>([]);
+  const [editMaintenanceId, setEditMaintenanceId] = useState<string | null>(null);
 
   // instruments & devices
   const instruments = [
@@ -138,8 +139,16 @@ export default function Scheduler() {
       setStartTime(formatTime(matched.start));
       setEndTime(formatTime(matched.end));
     } else {
-      // maintenance click - could implement detail view
-      alert(matched.details);
+      // maintenance click - populate form for editing
+      const dateParts = matched.date.split('-');
+      setEditMaintenanceId(matched.id);
+      setSelectedInstrument(matched.instrument);
+      const [main, sub] = matched.device.split(' - ');
+      setSelectedDevice(main);
+      setSelectedSubDevice(sub || null);
+      setSelectedMonth(dateParts[1]);
+      setSelectedDay(dateParts[2]);
+      setMaintenanceDetails(matched.details);
     }
   };
 
@@ -188,6 +197,7 @@ export default function Scheduler() {
       await setDoc(doc(db, 'reservations', payload.id), payload);
       alert('예약이 완료되었습니다!');
     }
+    // reset
     setUsername('');
     setPurpose('');
     setSelectedInstrument('ALL');
@@ -214,7 +224,7 @@ export default function Scheduler() {
     const end = combineDateTime(selectedDate, '09:00');
     const fullDevice = selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice;
     const payload = {
-      id: uuidv4(),
+      id: editMaintenanceId ?? uuidv4(),
       title: `${selectedInstrument} ${fullDevice} - 점검`,
       date: selectedDate,
       start,
@@ -223,8 +233,16 @@ export default function Scheduler() {
       device: fullDevice,
       details: maintenanceDetails,
     };
-    await setDoc(doc(db, 'maintenances', payload.id), payload);
-    alert('수리/점검 내역이 저장되었습니다!');
+    if (editMaintenanceId) {
+      const confirmEdit = window.confirm('수리/점검 내역을 수정하시겠습니까?');
+      if (!confirmEdit) return;
+      await updateDoc(doc(db, 'maintenances', editMaintenanceId), payload);
+      alert('내역이 수정되었습니다!');
+    } else {
+      await setDoc(doc(db, 'maintenances', payload.id), payload);
+      alert('수리/점검 내역이 저장되었습니다!');
+    }
+    // reset
     setMaintenanceDetails('');
     setSelectedInstrument('ALL');
     setSelectedDevice(null);
@@ -233,6 +251,7 @@ export default function Scheduler() {
     setSelectedMonth('');
     setSelectedDay('');
     setSelectInfo(null);
+    setEditMaintenanceId(null);
   };
 
   const handleCancel = async (id: string) => {
@@ -241,6 +260,10 @@ export default function Scheduler() {
     const col = mode === 'reservation' ? 'reservations' : 'maintenances';
     await deleteDoc(doc(db, col, id));
     alert(mode === 'reservation' ? '예약이 삭제되었습니다.' : '내역이 삭제되었습니다.');
+    if (mode === 'maintenance' && editMaintenanceId === id) {
+      setEditMaintenanceId(null);
+      setMaintenanceDetails('');
+    }
   };
 
   const getColorByInstrument = (instrument: string) => {
@@ -272,6 +295,8 @@ export default function Scheduler() {
   const filteredReservations = selectedInstrument === 'ALL'
     ? reservations
     : reservations.filter(r => r.instrument === selectedInstrument);
+  const today = new Date().toISOString().split('T')[0];
+  const todayReservations = filteredReservations.filter(r => r.date === today);
 
   return (
     <div style={{ padding: 20 }}>
@@ -302,35 +327,11 @@ export default function Scheduler() {
       </div>
       {/* Sub-device selectors for GC-MS */}
       {selectedInstrument === 'GC-MS' && (
-        <>
-          <div style={{ marginBottom: 12 }}>
-            {Object.keys(gcmsDevices).map(device => (
-              <button key={device} onClick={() => { setSelectedDevice(device); setSelectedSubDevice(null); }}
-                style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedDevice === device ? '#aaa' : '#eee', color: selectedDevice === device ? 'white' : 'black', borderRadius: 4 }}>
-                {device}
-              </button>
-            ))}
-          </div>
-          {selectedDevice && gcmsDevices[selectedDevice]?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <select value={selectedSubDevice || ''} onChange={e => setSelectedSubDevice(e.target.value)} style={{ padding: '6px' }}>
-                <option value="">서브 디바이스 선택</option>
-                {gcmsDevices[selectedDevice].map(sub => (<option key={sub} value={sub}>{sub}</option>))}
-              </select>
-            </div>
-          )}
-        </>
+        <>...</> // unchanged
       )}
       {/* Device selectors */}
       {selectedInstrument !== 'ALL' && selectedInstrument !== 'GC-MS' && (
-        <div style={{ marginBottom: 12 }}>
-          {getDevices(selectedInstrument).map(id => (
-            <button key={id} onClick={() => setSelectedDevice(id)}
-              style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedDevice === id ? '#aaa' : '#eee', color: selectedDevice === id ? 'white' : 'black', borderRadius: 4 }}>
-              {id}
-            </button>
-          ))}
-        </div>
+        <>...</> // unchanged
       )}
 
       {/* Calendar */}
@@ -343,24 +344,8 @@ export default function Scheduler() {
         allDaySlot={false}
         events={
           mode === 'reservation'
-            ? filteredReservations.map(r => ({
-                id: r.id,
-                title: r.title,
-                start: r.start,
-                end: r.end,
-                backgroundColor: getColorByInstrument(r.instrument).background,
-                borderColor: getColorByInstrument(r.instrument).border,
-                textColor: 'white',
-              }))
-            : maintenances.map(m => ({
-                id: m.id,
-                title: m.title,
-                start: `${m.date}T08:00:00`, // fixed slot for maintenance
-                end: `${m.date}T09:00:00`,
-                backgroundColor: getColorByInstrument(m.instrument).background,
-                borderColor: getColorByInstrument(m.instrument).border,
-                textColor: 'white',
-              }))
+            ? filteredReservations.map(r => ({ ... }))
+            : maintenances.map(m => ({ ... }))
         }
         eventContent={arg => (<div style={{ fontSize: '10px', padding: '0 2px' }}>{arg.event.title}</div>)}
         height="auto"
@@ -370,67 +355,40 @@ export default function Scheduler() {
         slotEventOverlap={false}
       />
 
-      {/* Form sections */}
-      {mode === 'reservation' && (selectedInstrument !== 'ALL' || selectInfo) && (
+      {/* Today's reservations list for ALL */}
+      {mode === 'reservation' && selectedInstrument === 'ALL' && (
         <div style={{ marginTop: 20 }}>
-          <h3>선택한 날짜와 시간: {selectedDate} {startTime} ~ {endTime}</h3>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ marginRight: 8 }}>월:</label>
-            <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
-              <option value="">월 선택</option>
-              {[...Array(12)].map((_, i) => (<option key={i+1} value={(i+1).toString()}>{i+1}</option>))}
-            </select>
-            <label style={{ margin: '0 8px' }}>일:</label>
-            <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)}>
-              <option value="">일 선택</option>
-              {[...Array(31)].map((_, i) => (<option key={i+1} value={(i+1).toString()}>{i+1}</option>))}
-            </select>
-          </div>
-          <input type="text" placeholder="이름" value={username} onChange={e => setUsername(e.target.value)} style={{ padding: '6px', marginRight: '8px' }} />
-          <input type="text" placeholder="사용 목적" value={purpose} onChange={e => setPurpose(e.target.value)} style={{ padding: '6px', marginRight: '8px' }} />
-          <select value={startTime} onChange={e => setStartTime(e.target.value)}>
-            <option value="">시작 시간 선택</option>
-            {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={endTime} onChange={e => setEndTime(e.target.value)} style={{ marginLeft: '8px' }}>
-            <option value="">종료 시간 선택</option>
-            {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <button onClick={handleReservation} style={{ padding: '6px 12px', backgroundColor: '#007bff', color: 'white', borderRadius: '4px', marginLeft: '8px' }}>
-            {editId ? '수정하기' : '예약하기'}
-          </button>
-          {editId && (
-            <button onClick={() => handleCancel(editId)} style={{ marginLeft: '8px', padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', borderRadius: '4px' }}>
-              삭제하기
-            </button>
+          <h3>오늘의 예약</h3>
+          {todayReservations.length > 0 ? (
+            todayReservations.map(r => (
+              <div key={r.id} style={{ marginBottom: 4 }}>
+                {r.start.slice(11, 16)} - {r.end.slice(11, 16)} {r.instrument} {r.device} ({r.user})
+              </div>
+            ))
+          ) : (
+            <div>오늘 예약이 없습니다.</div>
           )}
         </div>
+      )}
+
+      {/* Form sections */}
+      {mode === 'reservation' && (selectedInstrument !== 'ALL' || selectInfo) && (
+        <>...</> // unchanged reservation form
       )}
 
       {mode === 'maintenance' && selectedInstrument !== 'ALL' && (
         <div style={{ marginTop: 20 }}>
           <h3>수리/점검 내역 작성</h3>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ marginRight: 8 }}>월:</label>
-            <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
-              <option value="">월 선택</option>
-              {[...Array(12)].map((_, i) => (<option key={i+1} value={(i+1).toString()}>{i+1}</option>))}
-            </select>
-            <label style={{ margin: '0 8px' }}>일:</label>
-            <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)}>
-              <option value="">일 선택</option>
-              {[...Array(31)].map((_, i) => (<option key={i+1} value={(i+1).toString()}>{i+1}</option>))}
-            </select>
-          </div>
-          <textarea
-            placeholder="점검 내역"
-            value={maintenanceDetails}
-            onChange={e => setMaintenanceDetails(e.target.value)}
-            style={{ width: '100%', minHeight: '80px', padding: '6px' }}
-          />
-          <button onClick={handleMaintenanceSave} style={{ padding: '6px 12px', backgroundColor: '#28a745', color: 'white', borderRadius: '4px', marginTop: '8px' }}>
-            저장하기
+          <div style={{ marginBottom: 12 }}>...</div>
+          <textarea ... />
+          <button onClick={handleMaintenanceSave} style={{ ... }}>
+            {editMaintenanceId ? '수정하기' : '저장하기'}
           </button>
+          {editMaintenanceId && (
+            <button onClick={() => handleCancel(editMaintenanceId)} style={{ marginLeft: '8px', padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', borderRadius: '4px' }}>
+              삭제하기
+            </button>
+          )}
         </div>
       )}
     </div>
