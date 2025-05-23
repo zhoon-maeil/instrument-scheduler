@@ -69,8 +69,8 @@ export default function Scheduler() {
   const generateTimeOptions = () => {
     const times: string[] = [];
     for (let h = 8; h < 18; h++) {
-      times.push(`${h.toString().padStart(2, '0')}:00`);
-      times.push(`${h.toString().padStart(2, '0')}:30`);
+      times.push(${h.toString().padStart(2, '0')}:00);
+      times.push(${h.toString().padStart(2, '0')}:30);
     }
     times.push('18:00');
     return times;
@@ -79,7 +79,7 @@ export default function Scheduler() {
 
   const formatTime = (datetimeStr: string) => new Date(datetimeStr).toTimeString().slice(0, 5);
   const formatDate = (datetimeStr: string) => new Date(datetimeStr).toISOString().split('T')[0];
-  const combineDateTime = (date: string, time: string) => `${date}T${time}:00`;
+  const combineDateTime = (date: string, time: string) => ${date}T${time}:00;
 
   // Firestore subscriptions
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function Scheduler() {
   useEffect(() => {
     if (selectedMonth && selectedDay) {
       const year = new Date().getFullYear();
-      const date = `${year}-${selectedMonth.padStart(2, '0')}-${selectedDay.padStart(2, '0')}`;
+      const date = ${year}-${selectedMonth.padStart(2, '0')}-${selectedDay.padStart(2, '0')};
       setSelectedDate(date);
     }
   }, [selectedMonth, selectedDay]);
@@ -170,7 +170,7 @@ export default function Scheduler() {
     const start = combineDateTime(selectedDate, startTime);
     const end = combineDateTime(selectedDate, endTime);
     const date = selectedDate;
-    const fullDevice = selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice;
+    const fullDevice = selectedSubDevice ? ${selectedDevice} - ${selectedSubDevice} : selectedDevice;
     const isDuplicate = reservations.some(
       (r) =>
         r.id !== editId &&
@@ -185,7 +185,7 @@ export default function Scheduler() {
     }
     const payload = {
       id: editId ?? uuidv4(),
-      title: `${selectedInstrument} ${fullDevice} - ${username}`,
+      title: ${selectedInstrument} ${fullDevice} - ${username},
       date,
       start,
       end,
@@ -215,10 +215,10 @@ export default function Scheduler() {
     }
     const start = combineDateTime(selectedDate, '08:00');
     const end = combineDateTime(selectedDate, '09:00');
-    const fullDevice = selectedSubDevice ? `${selectedDevice} - ${selectedSubDevice}` : selectedDevice;
+    const fullDevice = selectedSubDevice ? ${selectedDevice} - ${selectedSubDevice} : selectedDevice;
     const payload = {
       id: editMaintenanceId ?? uuidv4(),
-      title: `${selectedInstrument} ${fullDevice} - 점검`,
+      title: ${selectedInstrument} ${fullDevice} - 점검,
       date: selectedDate,
       start,
       end,
@@ -303,15 +303,24 @@ export default function Scheduler() {
       </div>
 
       {/* Instrument filter bar */}
-      <div style={{
-        marginBottom: 12,
-        padding: '12px 0',          // 내부 패딩 추가
-        background: '#f7f7f7',      // 상위(Instrument) 바: 연회색
-        borderRadius: 8
-      }}>
+      <div style={{ marginBottom: 12 }}>
         {instruments.map(inst => (
-          <button key={inst} onClick={() => { setSelectedInstrument(inst); setSelectedDevice(null); setSelectedSubDevice(null); setSelectedMonth(''); setSelectedDay(''); }}
-            style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedInstrument === inst ? '#343a40' : '#eee', color: selectedInstrument === inst ? 'white' : 'black', borderRadius: 4 }}>
+          <button
+            key={inst}
+            onClick={() => {
+              setSelectedInstrument(inst);
+              setSelectedDevice(null);
+              setSelectedSubDevice(null);
+              setSelectedMonth('');
+              setSelectedDay('');
+            }}
+            style={{
+              marginRight: 8,
+              padding: '6px 12px',
+              backgroundColor: selectedInstrument === inst ? '#343a40' : '#eee', // 기존코드
+              color: selectedInstrument === inst ? 'white' : 'black',
+              borderRadius: 4
+            }}>
             {inst === 'ALL' ? '전체' : inst}
           </button>
         ))}
@@ -339,21 +348,23 @@ export default function Scheduler() {
       )}
       {/* Device selectors for non-GC-MS */}
       {selectedInstrument !== 'ALL' && selectedInstrument !== 'GC-MS' && (
-        <div style={{
-          marginBottom: 12,
-          padding: '12px 0',           // 내부 패딩 추가
-          background: '#fff9db',       // 하위(Device) 바: 연노랑
-          borderRadius: 8
-        }}>
+        <div style={{ marginBottom: 12 }}>
           {getDevices(selectedInstrument).map(id => (
-            <button key={id} onClick={() => setSelectedDevice(id)}
-              style={{ marginRight: 8, padding: '6px 12px', backgroundColor: selectedDevice === id ? '#aaa' : '#eee', color: selectedDevice === id ? 'white' : 'black', borderRadius: 4 }}>
+            <button
+              key={id}
+              onClick={() => setSelectedDevice(id)}
+              style={{
+                marginRight: 8,
+                padding: '6px 12px',
+                backgroundColor: selectedDevice === id ? '#aaa' : '#eee', // 기존코드
+                color: selectedDevice === id ? 'white' : 'black',
+                borderRadius: 4
+              }}>
               {id}
             </button>
           ))}
         </div>
       )}
-
       {/* Calendar */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -377,8 +388,8 @@ export default function Scheduler() {
             : maintenances.map(m => ({
                 id: m.id,
                 title: m.title,
-                start: `${m.date}T08:00:00`, 
-                end: `${m.date}T09:00:00`, 
+                start: ${m.date}T08:00:00, 
+                end: ${m.date}T09:00:00, 
                 backgroundColor: getColorByInstrument(m.instrument).background,
                 borderColor: getColorByInstrument(m.instrument).border,
                 textColor: 'white',
