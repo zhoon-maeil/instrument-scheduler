@@ -69,8 +69,8 @@ export default function Scheduler() {
   const generateTimeOptions = () => {
     const times: string[] = [];
     for (let h = 8; h < 18; h++) {
-      times.push(${h.toString().padStart(2, '0')}:00);
-      times.push(${h.toString().padStart(2, '0')}:30);
+      times.push(`${h.toString().padStart(2, '0')}:00`);
+      times.push(`${h.toString().padStart(2, '0')}:30`);
     }
     times.push('18:00');
     return times;
@@ -79,7 +79,7 @@ export default function Scheduler() {
 
   const formatTime = (datetimeStr: string) => new Date(datetimeStr).toTimeString().slice(0, 5);
   const formatDate = (datetimeStr: string) => new Date(datetimeStr).toISOString().split('T')[0];
-  const combineDateTime = (date: string, time: string) => ${date}T${time}:00;
+  const combineDateTime = (date: string, time: string) => `${date}T${time}:00`;
 
   // Firestore subscriptions
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function Scheduler() {
   useEffect(() => {
     if (selectedMonth && selectedDay) {
       const year = new Date().getFullYear();
-      const date = ${year}-${selectedMonth.padStart(2, '0')}-${selectedDay.padStart(2, '0')};
+      const date = `${year}-${selectedMonth.padStart(2, '0')}-${selectedDay.padStart(2, '0')}`;
       setSelectedDate(date);
     }
   }, [selectedMonth, selectedDay]);
@@ -122,7 +122,7 @@ export default function Scheduler() {
     setSelectedMonth((date.getMonth() + 1).toString());
     setSelectedDay(date.getDate().toString());
     setSelectedDate(info.dateStr.split('T')[0]);
-    setSelectInfo(null); // 필요시
+    setSelectInfo(null);
   };
 
   const handleEventClick = (clickInfo: EventClickArg) => {
@@ -131,31 +131,33 @@ export default function Scheduler() {
         ? reservations.find((r) => r.id === clickInfo.event.id)
         : maintenances.find((m) => m.id === clickInfo.event.id);
     if (!matched) return;
-    if (mode === 'reservation' && matched.userUUID !== userUUID) {
+    if (mode === 'reservation' && (matched as any).userUUID !== userUUID) {
       alert('본인의 예약만 수정할 수 있습니다.');
       return;
     }
     if (mode === 'reservation') {
-      setEditId(matched.id);
-      setUsername(matched.user);
-      setPurpose(matched.purpose);
-      setSelectedInstrument(matched.instrument);
-      const [main, sub] = matched.device.split(' - ');
+      const r = matched as any;
+      setEditId(r.id);
+      setUsername(r.user);
+      setPurpose(r.purpose);
+      setSelectedInstrument(r.instrument);
+      const [main, sub] = r.device.split(' - ');
       setSelectedDevice(main);
       setSelectedSubDevice(sub || null);
-      setSelectedDate(formatDate(matched.start));
-      setStartTime(formatTime(matched.start));
-      setEndTime(formatTime(matched.end));
+      setSelectedDate(formatDate(r.start));
+      setStartTime(formatTime(r.start));
+      setEndTime(formatTime(r.end));
     } else {
-      const dateParts = matched.date.split('-');
-      setEditMaintenanceId(matched.id);
-      setSelectedInstrument(matched.instrument);
-      const [main, sub] = matched.device.split(' - ');
+      const m = matched as any;
+      const dateParts = m.date.split('-');
+      setEditMaintenanceId(m.id);
+      setSelectedInstrument(m.instrument);
+      const [main, sub] = m.device.split(' - ');
       setSelectedDevice(main);
       setSelectedSubDevice(sub || null);
       setSelectedMonth(dateParts[1]);
       setSelectedDay(dateParts[2]);
-      setMaintenanceDetails(matched.details);
+      setMaintenanceDetails(m.details);
     }
   };
 
@@ -170,7 +172,9 @@ export default function Scheduler() {
     const start = combineDateTime(selectedDate, startTime);
     const end = combineDateTime(selectedDate, endTime);
     const date = selectedDate;
-    const fullDevice = selectedSubDevice ? ${selectedDevice} - ${selectedSubDevice} : selectedDevice;
+    const fullDevice = selectedSubDevice
+      ? `${selectedDevice} - ${selectedSubDevice}`
+      : selectedDevice;
     const isDuplicate = reservations.some(
       (r) =>
         r.id !== editId &&
@@ -185,7 +189,7 @@ export default function Scheduler() {
     }
     const payload = {
       id: editId ?? uuidv4(),
-      title: ${selectedInstrument} ${fullDevice} - ${username},
+      title: `${selectedInstrument} ${fullDevice} - ${username}`,
       date,
       start,
       end,
@@ -215,10 +219,12 @@ export default function Scheduler() {
     }
     const start = combineDateTime(selectedDate, '08:00');
     const end = combineDateTime(selectedDate, '09:00');
-    const fullDevice = selectedSubDevice ? ${selectedDevice} - ${selectedSubDevice} : selectedDevice;
+    const fullDevice = selectedSubDevice
+      ? `${selectedDevice} - ${selectedSubDevice}`
+      : selectedDevice;
     const payload = {
       id: editMaintenanceId ?? uuidv4(),
-      title: ${selectedInstrument} ${fullDevice} - 점검,
+      title: `${selectedInstrument} ${fullDevice} - 점검`,
       date: selectedDate,
       start,
       end,
@@ -235,8 +241,15 @@ export default function Scheduler() {
       await setDoc(doc(db, 'maintenances', payload.id), payload);
       alert('수리/점검 내역이 저장되었습니다!');
     }
-    setMaintenanceDetails(''); setSelectedInstrument('ALL'); setSelectedDevice(null);
-    setSelectedSubDevice(null); setSelectedDate(''); setSelectedMonth(''); setSelectedDay(''); setSelectInfo(null); setEditMaintenanceId(null);
+    setMaintenanceDetails('');
+    setSelectedInstrument('ALL');
+    setSelectedDevice(null);
+    setSelectedSubDevice(null);
+    setSelectedDate('');
+    setSelectedMonth('');
+    setSelectedDay('');
+    setSelectInfo(null);
+    setEditMaintenanceId(null);
   };
 
   const handleCancel = async (id: string) => {
@@ -277,7 +290,6 @@ export default function Scheduler() {
     }
   };
 
-  // filter
   const filteredReservations = selectedInstrument === 'ALL'
     ? reservations
     : reservations.filter(r => r.instrument === selectedInstrument);
@@ -367,8 +379,8 @@ export default function Scheduler() {
             : maintenances.map(m => ({
                 id: m.id,
                 title: m.title,
-                start: ${m.date}T08:00:00, 
-                end: ${m.date}T09:00:00, 
+                start: `${m.date}T08:00:00`,
+                end: `${m.date}T09:00:00`,
                 backgroundColor: getColorByInstrument(m.instrument).background,
                 borderColor: getColorByInstrument(m.instrument).border,
                 textColor: 'white',
@@ -416,7 +428,6 @@ export default function Scheduler() {
           </div>
           <input type="text" placeholder="이름" value={username} onChange={e => setUsername(e.target.value)} style={{ padding: '6px', marginRight: '8px' }} />
           <input type="text" placeholder="사용 목적" value={purpose} onChange={e => setPurpose(e.target.value)} style={{ padding: '6px', marginRight: '8px' }} />
-         
           <select value={startTime} onChange={e => setStartTime(e.target.value)}>
             <option value="">시작 시간 선택</option>
             {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
@@ -450,16 +461,16 @@ export default function Scheduler() {
             <label style={{ marginRight: 8 }}>월:</label>
             <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
               <option value="">월 선택</option>
-              {[...Array(12)].map((_, i) =>
+              {[...Array(12)].map((_, i) => (
                 <option key={i+1} value={(i+1).toString()}>{i+1}</option>
-              )}
+              ))}
             </select>
             <label style={{ margin: '0 8px' }}>일:</label>
             <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)}>
               <option value="">일 선택</option>
-              {[...Array(31)].map((_, i) =>
+              {[...Array(31)].map((_, i) => (
                 <option key={i+1} value={(i+1).toString()}>{i+1}</option>
-              )}
+              ))}
             </select>
           </div>
           <textarea
